@@ -1,30 +1,26 @@
-const nodemailer = require('nodemailer');
+const axios = require('axios');
 
-let transporter;
-
-function getTransporter() {
-    if (!transporter) {
-        transporter = nodemailer.createTransport({
-            service: process.env.MAIL_SERVICE || 'gmail',
-            auth: {
-                user: process.env.MAIL_USER,
-                pass: process.env.MAIL_PASSWORD
-            }
-        });
-    }
-    return transporter;
-}
+// Sent over HTTPS via Brevo's transactional email API instead of raw SMTP — most free-tier hosts
+// (Render included) block outbound SMTP ports, which made nodemailer/Gmail time out in production.
+const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
 
 async function sendMail({ to, subject, html }) {
-    if (!process.env.MAIL_USER || !process.env.MAIL_PASSWORD) {
-        console.warn(`[mail] MAIL_USER/MAIL_PASSWORD not set — skipping email to ${to}: "${subject}"`);
+    if (!process.env.BREVO_API_KEY || !process.env.MAIL_USER) {
+        console.warn(`[mail] BREVO_API_KEY/MAIL_USER not set — skipping email to ${to}: "${subject}"`);
         return;
     }
-    await getTransporter().sendMail({
-        from: `"ZomaFeeds" <${process.env.MAIL_USER}>`,
-        to,
+    await axios.post(BREVO_API_URL, {
+        sender: { name: 'ZomaFeeds', email: process.env.MAIL_USER },
+        to: [{ email: to }],
         subject,
-        html
+        htmlContent: html
+    }, {
+        headers: {
+            accept: 'application/json',
+            'content-type': 'application/json',
+            'api-key': process.env.BREVO_API_KEY
+        },
+        timeout: 15000
     });
 }
 

@@ -48,7 +48,7 @@ There are two experiences living in one codebase, guarded by role-based routing:
 - **For foodies** — an Instagram-Reels-style vertical feed of real dishes, with likes, saves, comments, star ratings, and a Zomato-style checkout that ends in a live order tracker.
 - **For restaurant partners** — a dashboard to run the kitchen: accept/reject orders, toggle open/closed, manage the menu, attach a soundtrack to every reel, and watch ratings and revenue roll in.
 
-Everything — auth, media storage, email, and even the background music search — is wired to real, working services (MongoDB, ImageKit, Gmail SMTP, a self-hosted JioSaavn API), not mocked stubs.
+Everything — auth, media storage, email, and even the background music search — is wired to real, working services (MongoDB, ImageKit, Brevo, a self-hosted JioSaavn API), not mocked stubs.
 
 ---
 
@@ -106,7 +106,7 @@ Everything — auth, media storage, email, and even the background music search 
 | **Database** | MongoDB, Mongoose 8 (ODM) |
 | **Auth** | JWT (`httpOnly` cookies), `bcryptjs` for password + OTP hashing |
 | **File uploads** | Multer (in-memory) → ImageKit (video/image CDN) |
-| **Email** | Nodemailer over Gmail SMTP |
+| **Email** | Brevo transactional email API (HTTPS, not SMTP — avoids the outbound SMTP port blocks free hosts like Render impose) |
 | **Music search** | JioSaavn API (self-hosted instance) |
 | **Linting** | ESLint 9 (flat config) |
 
@@ -136,7 +136,7 @@ flowchart TD
 
     DB[("MongoDB<br/>via Mongoose")]
     ImageKit[["ImageKit<br/>video / image CDN"]]
-    Gmail[["Gmail SMTP<br/>via Nodemailer"]]
+    Brevo[["Brevo<br/>transactional email API"]]
     Saavn[["JioSaavn API<br/>song search"]]
 
     Client -- "Axios, JWT cookie" --> API
@@ -148,8 +148,8 @@ flowchart TD
     NotifC --> DB
     FoodC -- "upload / stream video" --> ImageKit
     PartnerC -- "profile picture" --> ImageKit
-    AuthC -- "OTP · welcome email" --> Gmail
-    OrderC -- "order bill email" --> Gmail
+    AuthC -- "OTP · welcome email" --> Brevo
+    OrderC -- "order bill email" --> Brevo
     SongC -- "search a track" --> Saavn
 ```
 
@@ -265,7 +265,7 @@ flowchart LR
     Start(["Register / Login"]) --> Choice{"Password or OTP?"}
     Choice -- Password --> PwCheck["bcrypt hash / compare"]
     Choice -- OTP --> Req["POST /api/auth/otp/request"]
-    Req --> Mail["4-digit code emailed via Gmail SMTP"]
+    Req --> Mail["4-digit code emailed via Brevo"]
     Mail --> Enter["User enters the code"]
     Enter --> OtpCheck["bcrypt compare against the otp collection"]
     PwCheck --> Sign["Sign JWT, set httpOnly cookie"]
@@ -289,7 +289,7 @@ ZomaFeeds/
 │       ├── models/                # mongoose schemas
 │       ├── routes/                # express routers, wired to controllers + middleware
 │       ├── middlewares/           # authUserMiddleware / authFoodPartnerMiddleware / authAnyMiddleware
-│       └── services/              # storage (ImageKit), mail (Nodemailer), otp
+│       └── services/              # storage (ImageKit), mail (Brevo), otp
 │
 └── frontend/
     └── src/
@@ -313,7 +313,7 @@ ZomaFeeds/
 - **Node.js** 18+ and npm
 - A **MongoDB** instance (local or Atlas)
 - An **ImageKit** account (for video/image storage)
-- A **Gmail account with an App Password** (for Nodemailer)
+- A **Brevo** account with a verified sender email and an API key (for transactional email)
 - A reachable **JioSaavn API** instance (public or self-hosted) for song search
 
 ### Clone
@@ -366,11 +366,10 @@ Create a `.env` file inside `backend/` — **it is git-ignored and must never be
 | `IMAGEKIT_PRIVATE_KEY` | ✅ | ImageKit private key |
 | `IMAGEKIT_URL_ENDPOINT` | ✅ | ImageKit delivery URL endpoint |
 | `SAAVN_API_BASE_URL` | ✅ | Base URL of a JioSaavn-compatible search API |
-| `MAIL_SERVICE` | ✅ | SMTP service name for Nodemailer (e.g. `gmail`) |
-| `MAIL_USER` | ✅ | Sender mailbox address |
-| `MAIL_PASSWORD` | ✅ | Mailbox app password (not your regular password) |
+| `MAIL_USER` | ✅ | Sender email address — must be verified as a Sender in Brevo |
+| `BREVO_API_KEY` | ✅ | Brevo transactional email API key |
 
-> If `MAIL_USER` / `MAIL_PASSWORD` are left unset, the mail service no-ops with a console warning instead of crashing — everything else keeps working.
+> Email is sent over Brevo's HTTPS API rather than raw SMTP — free hosts like Render block outbound SMTP ports, which silently breaks Nodemailer/Gmail in production. If `MAIL_USER` / `BREVO_API_KEY` are left unset, the mail service no-ops with a console warning instead of crashing — everything else keeps working.
 
 ---
 
