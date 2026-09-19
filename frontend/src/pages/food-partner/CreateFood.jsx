@@ -14,6 +14,7 @@ const CreateFood = () => {
     const [ song, setSong ] = useState(null);
     const [ videoFile, setVideoFile ] = useState(null);
     const [ videoURL, setVideoURL ] = useState('');
+    const [ videoDuration, setVideoDuration ] = useState(null);
     const [ fileError, setFileError ] = useState('');
     const [ submitError, setSubmitError ] = useState('');
     const [ isUploading, setIsUploading ] = useState(false);
@@ -26,12 +27,24 @@ const CreateFood = () => {
     useEffect(() => {
         if (!videoFile) {
             setVideoURL('');
+            setVideoDuration(null);
             return;
         }
         const url = URL.createObjectURL(videoFile);
         setVideoURL(url);
+        setVideoDuration(null);
         return () => URL.revokeObjectURL(url);
     }, [ videoFile ]);
+
+    // Reels are capped at 30s and need at least 5s for a song clip to make sense — checked once
+    // the browser reports the real duration, since that isn't known synchronously on selection.
+    useEffect(() => {
+        if (videoDuration == null) return;
+        if (videoDuration < 5 || videoDuration > 30) {
+            setFileError(`Video must be between 5 and 30 seconds long (this one is ${Math.round(videoDuration)}s).`);
+            setVideoFile(null);
+        }
+    }, [ videoDuration ]);
 
     const onFileChange = (e) => {
         const file = e.target.files && e.target.files[ 0 ];
@@ -101,6 +114,7 @@ const CreateFood = () => {
                 <header className="create-food-header">
                     <h1 className="create-food-title">Create Food</h1>
                     <p className="create-food-subtitle">Upload a short video, give it a name, and add a description.</p>
+                    <p className="small-note">Video length: minimum 5 seconds, maximum 30 seconds.</p>
                 </header>
 
                 <form className="create-food-form" onSubmit={onSubmit}>
@@ -156,7 +170,7 @@ const CreateFood = () => {
                     {videoURL && (
                         <div className="video-preview">
                             <button className="video-preview-button" type="button" onClick={togglePreviewPlayback} aria-label="Play or pause video preview">
-                                <video ref={previewVideoRef} className="video-preview-el" src={videoURL} muted playsInline preload="metadata" />
+                                <video ref={previewVideoRef} className="video-preview-el" src={videoURL} muted playsInline preload="metadata" onLoadedMetadata={() => setVideoDuration(previewVideoRef.current?.duration || null)} />
                                 <span className="video-preview-hint" aria-hidden="true">Tap to play / pause</span>
                             </button>
                         </div>
@@ -200,7 +214,7 @@ const CreateFood = () => {
 
                     <div className="field-group">
                         <label>Song (optional)</label>
-                        <SongPicker selectedSong={song} onSelect={setSong} onRemove={() => setSong(null)} />
+                        <SongPicker selectedSong={song} onSelect={setSong} onRemove={() => setSong(null)} videoDuration={videoDuration} />
                     </div>
 
                     <div className="field-group">

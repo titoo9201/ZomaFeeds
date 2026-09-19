@@ -116,7 +116,14 @@ async function advanceOrderStatus(req, res) {
     if (!next) return res.status(400).json({ message: `Cannot advance an order from status "${order.status}"` });
     order.status = next;
     await order.save();
-    await order.populate(FOOD_POPULATE);
+    await order.populate([FOOD_POPULATE, { path: 'user', select: 'email fullName' }]);
+
+    if (next === 'out_for_delivery') {
+        mailService.sendOrderOutForDeliveryEmail(order.user.email, order).catch(error => console.error('[mail] out-for-delivery email failed:', error.message));
+    } else if (next === 'delivered') {
+        mailService.sendOrderDeliveredEmail(order.user.email, order).catch(error => console.error('[mail] delivered email failed:', error.message));
+    }
+
     res.json({ order });
 }
 

@@ -23,7 +23,9 @@ function parseSong(rawSong) {
     if (!rawSong) return undefined;
     const song = typeof rawSong === 'string' ? JSON.parse(rawSong) : rawSong;
     if (!song?.title || !song?.url) return undefined;
-    return { id: song.id, title: song.title, artist: song.artist, image: song.image, url: song.url };
+    const clipDuration = Math.min(30, Math.max(5, Number(song.clipDuration) || 30));
+    const startTime = Math.max(0, Number(song.startTime) || 0);
+    return { id: song.id, title: song.title, artist: song.artist, image: song.image, url: song.url, startTime, clipDuration };
 }
 
 async function createFood(req, res) {

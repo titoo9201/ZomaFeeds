@@ -31,6 +31,7 @@ Scroll bite-sized food reels from restaurants near you, then order in a tap — 
 - [Project structure](#-project-structure)
 - [Getting started](#-getting-started)
 - [Environment variables](#-environment-variables)
+- [Deployment notes](#-deployment-notes)
 - [API reference](#-api-reference)
 - [Design system](#-design-system)
 - [Roadmap](#-roadmap)
@@ -69,6 +70,7 @@ Everything — auth, media storage, email, and even the background music search 
 | 🔔 | **"Notify me" for closed restaurants** — get an in-app notification the second they reopen |
 | 🔑 | **Password *or* OTP auth** — register/log in with a password, or a 4-digit code emailed to you; both work everywhere |
 | 🔈 | **Reel sound control** — a reel plays its own audio by default; if the partner attached a song, the video mutes and the song plays instead, all behind one global mute toggle |
+| 🖱️ | **Desktop-friendly navigation** — the scrollbar is hidden in favour of on-screen ▲▼ buttons and ↑/↓ keyboard shortcuts to move between reels; mobile keeps its native swipe |
 | 🌗 | **Light/dark theme**, tuned to the brand palette, remembered across visits |
 
 ### 🍽️ For restaurant partners
@@ -79,12 +81,14 @@ Everything — auth, media storage, email, and even the background music search 
 | 🟢 | **Open/Closed switch** — flip your restaurant's status any time, independent of your configured hours |
 | 🕘 | **Order buckets** — Today / Yesterday / Past, each with orders-served and revenue stats |
 | ✅❌ | **Accept / Reject workflow** — accepting moves the order into your kitchen queue; rejecting requires a reason and auto-refunds a paid order |
-| 🚚 | **One-tap status advance** — `preparing → out for delivery → delivered` |
+| 🚚 | **One-tap status advance** — `preparing → out for delivery → delivered`, each step emailing the customer |
 | 🍕 | **Full menu control** — add, edit (name, description, price, category, availability), or delete any item |
-| 🎵 | **Attach a song to a reel**, Instagram-style, searched live from a real music API |
+| 🎬 | **Reel length limit** — uploads must be 5–30 seconds, checked the moment a video is selected |
+| 🎵 | **Instagram-style song trimming** — search a track, drag a waveform window to pick where it starts, tap the circular timer to set the clip length (5–30s, capped to the video's own length), then preview before attaching |
 | ⭐ | **Per-item and restaurant-wide ratings** visible right on the dashboard and profile |
+| 🔄 | **Live-updating dashboard** — incoming orders refresh automatically every few seconds; no manual reload to see a new one land |
 | 🏪 | **Editable business profile** — name, contact, phone, address, restaurant type, photo |
-| 📧 | **Automatic emails** — a welcome email on signup, and an itemised bill emailed to the customer the moment you accept their order |
+| 📧 | **Branded automatic emails** — a welcome email on signup, then order-bill, out-for-delivery, and delivered emails as the order moves through its lifecycle |
 
 ### 🛠️ Under the hood
 
@@ -93,6 +97,8 @@ Everything — auth, media storage, email, and even the background music search 
 - **HTTP-only JWT cookies** for auth, checked against MongoDB on every protected request.
 - **Password *and* OTP are first-class** on both register and login, for both roles — bcrypt-hashed either way.
 - **`validateModifiedOnly` Mongoose pattern** on every partial update, so a legacy document missing a newer required field never blocks an unrelated edit.
+- **Every auth/food/order endpoint is try/catch-wrapped**, returning a real JSON error message instead of letting Express's default HTML error page mask what actually failed.
+- **Song clips are clamped server-side too** (5–30s, never negative) — the frontend's trim UI is a convenience, not the only line of defence.
 - Every design decision is CSS-scoped: no monolithic stylesheet — each feature owns its own file under `frontend/src/styles/`.
 
 ---
@@ -249,8 +255,12 @@ sequenceDiagram
         API->>API: status → preparing
         API-->>U: order-bill email sent
         FE->>U: Order-confirmed modal + star review prompt
-        P->>API: PATCH /api/orders/:id/advance (×2)
-        API->>API: preparing → out_for_delivery → delivered
+        P->>API: PATCH /api/orders/:id/advance
+        API->>API: status → out_for_delivery
+        API-->>U: "out for delivery" email sent
+        P->>API: PATCH /api/orders/:id/advance
+        API->>API: status → delivered
+        API-->>U: "delivered" email sent
     else Partner rejects
         P->>API: PATCH /api/orders/:id/respond (reject, reason)
         API->>API: status → cancelled (refunded if paid)
@@ -370,6 +380,17 @@ Create a `.env` file inside `backend/` — **it is git-ignored and must never be
 | `BREVO_API_KEY` | ✅ | Brevo transactional email API key |
 
 > Email is sent over Brevo's HTTPS API rather than raw SMTP — free hosts like Render block outbound SMTP ports, which silently breaks Nodemailer/Gmail in production. If `MAIL_USER` / `BREVO_API_KEY` are left unset, the mail service no-ops with a console warning instead of crashing — everything else keeps working.
+
+---
+
+## 🚢 Deployment notes
+
+A few things learned the hard way while deploying to Render — worth knowing wherever this ends up hosted:
+
+- **SPA routing needs an explicit rewrite rule.** A static host has no idea `/user/login` or `/dashboard` are client-side routes — refreshing or deep-linking to one 404s unless every path falls back to `index.html`. `frontend/public/_redirects` (`/* /index.html 200`) covers Netlify-style hosts automatically; on Render specifically, also add the same rule under the site's **Redirects/Rewrites** dashboard tab (Source `/*` → Destination `/index.html` → Action `Rewrite`), since the file isn't always picked up on its own.
+- **`.env` never reaches the host.** It's git-ignored on purpose, so every variable in [Environment variables](#-environment-variables) has to be added by hand in the host's dashboard (e.g. Render → your service → **Environment**) — forgetting one fails silently or throws a generic 500 instead of a clear error.
+- **Free-tier services sleep.** Render (and similar free tiers) spin a service down after ~15 minutes of inactivity; the next request 502s while it cold-starts back up. Point a free uptime monitor (UptimeRobot, cron-job.org, …) at `GET /` for both the backend and the JioSaavn API instance, on a 5-minute interval, to keep them warm.
+- **Prefer an HTTPS email API over raw SMTP.** Most free hosts block outbound SMTP ports outright, which silently breaks password-based senders like Nodemailer/Gmail in production — exactly why email goes through Brevo's HTTPS API here instead.
 
 ---
 

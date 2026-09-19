@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../config/api'
 
@@ -9,6 +9,7 @@ const getStoredMuted = () => {
 const ReelFeed = ({ items = [], onLike, onSave, onCommentAdded, emptyMessage = 'No videos yet.' }) => {
   const videoRefs = useRef(new Map())
   const audioRef = useRef(null)
+  const feedRef = useRef(null)
   const [activeItemId, setActiveItemId] = useState(null)
   const [isMuted, setIsMuted] = useState(getStoredMuted)
   const [activeComments, setActiveComments] = useState(null)
@@ -41,18 +42,54 @@ const ReelFeed = ({ items = [], onLike, onSave, onCommentAdded, emptyMessage = '
     })
   }, [isMuted, items])
 
-  // One shared <audio> element plays whichever active reel's song, looping alongside its video.
+  // One shared <audio> element plays whichever active reel's song, looping just the chosen
+  // clip (startTime to startTime + clipDuration) alongside its video — not the whole track.
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
-    const songUrl = activeItem?.song?.url
-    if (!songUrl || isMuted) { audio.pause(); return }
-    if (audio.src !== songUrl) { audio.src = songUrl; audio.currentTime = 0 }
-    audio.loop = true
+    const song = activeItem?.song
+    if (!song?.url || isMuted) { audio.pause(); return }
+    const startTime = song.startTime || 0
+    const clipDuration = song.clipDuration || 30
+
+    // Seeking works reliably only once the browser has loaded the new track's metadata —
+    // setting currentTime right after src is often silently ignored/clamped to 0 otherwise.
+    const seekToStart = () => { audio.currentTime = startTime }
+    const loopClip = () => { if (audio.currentTime >= startTime + clipDuration || audio.currentTime < startTime) audio.currentTime = startTime }
+
+    if (audio.src !== song.url) {
+      audio.src = song.url
+      audio.addEventListener('loadedmetadata', seekToStart, { once: true })
+    } else {
+      seekToStart()
+    }
+    audio.loop = false
+    audio.addEventListener('timeupdate', loopClip)
     audio.play().catch(() => {})
+    return () => { audio.removeEventListener('timeupdate', loopClip); audio.removeEventListener('loadedmetadata', seekToStart) }
   }, [activeItem, isMuted])
 
   useEffect(() => () => audioRef.current?.pause(), [])
+
+  // Desktop-only: click the arrows or press ↑/↓ to move one reel at a time instead of relying
+  // on the (now-hidden) native scrollbar — mobile keeps its normal touch scroll/swipe.
+  const scrollByReel = useCallback(direction => {
+    const feed = feedRef.current
+    if (!feed) return
+    feed.scrollBy({ top: direction * feed.clientHeight, behavior: 'smooth' })
+  }, [])
+
+  useEffect(() => {
+    const onKeyDown = event => {
+      if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
+      const tag = document.activeElement?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      event.preventDefault()
+      scrollByReel(event.key === 'ArrowDown' ? 1 : -1)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [scrollByReel])
 
   const toggleMute = () => setIsMuted(previous => {
     const next = !previous
@@ -107,7 +144,7 @@ const ReelFeed = ({ items = [], onLike, onSave, onCommentAdded, emptyMessage = '
     <div className="reel-action-group"><button disabled={isCommentsLoading} onClick={() => openComments(item)} className="reel-action" aria-label="Comments">{isCommentsLoading ? '...' : '☵'}</button><div className="reel-action__count">{item.commentsCount ?? 0}</div></div>
   </>
 
-  return <div className="reels-page"><audio ref={audioRef} /><div className="reels-feed" role="list">
+  return <div className="reels-page"><audio ref={audioRef} /><div className="reels-feed" ref={feedRef} role="list">
     {items.length === 0 && <div className="empty-state"><p>{emptyMessage}</p></div>}
     {items.map(item => <section key={item._id} className="reel" role="listitem">
       <video ref={element => element ? videoRefs.current.set(item._id, element) : videoRefs.current.delete(item._id)} data-id={item._id} className="reel-video" src={item.video} muted={isMuted || Boolean(item.song?.url)} playsInline loop preload="metadata" />
@@ -117,6 +154,10 @@ const ReelFeed = ({ items = [], onLike, onSave, onCommentAdded, emptyMessage = '
       </div>
     </section>)}
   </div>
+  {items.length > 1 && <div className="reels-scroll-nav">
+    <button type="button" onClick={() => scrollByReel(-1)} aria-label="Previous reel">▲</button>
+    <button type="button" onClick={() => scrollByReel(1)} aria-label="Next reel">▼</button>
+  </div>}
   {activeItem && <div className="reel-actions reel-actions--floating">{renderActionButtons(activeItem)}</div>}
   {activeComments && <aside className="comments-panel">
     <div className="comments-header"><h2>Comments</h2><button className="comments-close" onClick={() => setActiveComments(null)} aria-label="Close comments">×</button></div>

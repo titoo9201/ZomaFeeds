@@ -27,3 +27,25 @@
 .song-picker-selected { display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface-alt); }
 .song-picker-selected-actions { display: flex; gap: 6px; flex: 0 0 auto; }
 .song-picker-selected-actions button { padding: 7px 12px; font-size: .8rem; }
+
+/* Instagram-style clip trimming: drag the highlighted window over a waveform to pick where the
+   reel's soundtrack starts, and tap the circular timer to pick how long it plays (15-30s). */
+.song-trim { padding: 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); }
+.song-trim-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.song-trim-cover { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; flex: 0 0 auto; background: var(--color-surface-alt); }
+.song-trim-actions { display: flex; align-items: center; gap: 10px; margin: 12px 0 14px; }
+.song-trim-footer { display: flex; justify-content: flex-end; gap: 8px; }
+
+.song-trim-timer { position: relative; flex: 0 0 auto; }
+.song-trim-timer-circle { width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--color-accent); background: var(--color-surface-alt); color: var(--color-accent); font-weight: 800; font-size: .72rem; cursor: pointer; display: grid; place-items: center; }
+.song-trim-timer-circle:hover { background: color-mix(in srgb, var(--color-accent) 12%, transparent); }
+.song-trim-timer-menu { position: absolute; top: 50px; right: 0; z-index: 5; list-style: none; margin: 0; padding: 6px; display: grid; gap: 2px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); box-shadow: var(--shadow-md); min-width: 64px; }
+.song-trim-timer-menu button { width: 100%; padding: 7px 10px; border: none; background: transparent; color: var(--color-text); border-radius: var(--radius-xs); font: inherit; font-size: .82rem; font-weight: 600; text-align: left; cursor: pointer; }
+.song-trim-timer-menu button:hover { background: var(--color-surface-alt); }
+.song-trim-timer-menu button.is-active { background: var(--color-accent); color: var(--button-text); }
+
+.song-trim-waveform { position: relative; height: 56px; border-radius: var(--radius-sm); background: var(--color-surface-alt); overflow: hidden; cursor: grab; touch-action: none; user-select: none; }
+.song-trim-waveform:active { cursor: grabbing; }
+.song-trim-bars { position: absolute; inset: 0; display: flex; align-items: center; gap: 2px; padding: 0 4px; }
+.song-trim-bars span { flex: 1 1 auto; min-width: 2px; border-radius: 2px; background: var(--color-border); }
+.song-trim-window { position: absolute; top: 3px; bottom: 3px; border-radius: 8px; background: color-mix(in srgb, var(--color-accent) 30%, transparent); border: 2px solid var(--color-accent); box-shadow: 0 0 0 9999px color-mix(in srgb, var(--color-surface-alt) 55%, transparent); pointer-events: none; }

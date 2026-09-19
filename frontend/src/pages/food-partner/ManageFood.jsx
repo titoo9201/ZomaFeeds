@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '../../config/api'
 import '../../styles/create-food.css'
@@ -20,6 +20,8 @@ const ManageFood = () => {
   const [category, setCategory] = useState('')
   const [isAvailable, setIsAvailable] = useState(true)
   const [song, setSong] = useState(null)
+  const [videoDuration, setVideoDuration] = useState(null)
+  const videoRef = useRef(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -75,7 +77,7 @@ const ManageFood = () => {
           <p className="create-food-subtitle">Update details, price, and availability for this reel.</p>
         </header>
 
-        <div className="manage-food-preview"><video src={food.video} muted controls /></div>
+        <div className="manage-food-preview"><video ref={videoRef} src={food.video} muted controls onLoadedMetadata={() => setVideoDuration(videoRef.current?.duration || null)} /></div>
 
         <form className="create-food-form" onSubmit={save}>
           <div className="field-group">
@@ -95,7 +97,7 @@ const ManageFood = () => {
 
           <div className="field-group">
             <label>Song</label>
-            <SongPicker selectedSong={song} onSelect={setSong} onRemove={() => setSong(null)} />
+            <SongPicker selectedSong={song} onSelect={setSong} onRemove={() => setSong(null)} videoDuration={videoDuration} />
           </div>
 
           <div className="field-group">

@@ -31,7 +31,14 @@ const Dashboard = () => {
   useEffect(() => { loadProfile() }, [loadProfile])
 
   const reloadIncoming = useCallback(() => api.get(`/api/orders/partner/incoming?days=${historyDays}`).then(({ data }) => setOrderData(data)).catch(() => {}), [historyDays])
-  useEffect(() => { reloadIncoming() }, [reloadIncoming])
+
+  // No socket layer here, so poll for new incoming orders instead of making the partner refresh
+  // the page by hand every time a customer places one.
+  useEffect(() => {
+    reloadIncoming()
+    const interval = window.setInterval(reloadIncoming, 10000)
+    return () => window.clearInterval(interval)
+  }, [reloadIncoming])
 
   const respondToOrder = async (orderId, decision, reason) => {
     try {

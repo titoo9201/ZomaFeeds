@@ -16,7 +16,13 @@
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* old Edge */
 }
+.reels-feed::-webkit-scrollbar { display: none; } /* Chrome/Safari/Brave */
+
+/* Desktop-only scroll arrows (see .reels-scroll-nav below); mobile keeps its native swipe/scroll */
+.reels-scroll-nav { display: none; }
 
 /* Each reel takes full viewport */
 .reel {
@@ -246,6 +252,16 @@
   /* The per-video overlay rail is hidden; one rail floats beside the card instead */
   .reel-actions--inline { display: none; }
   .reel-actions--floating { display: flex; flex: 0 0 auto; gap: 22px; }
+
+  /* Two arrow buttons docked to the card's right edge, replacing the hidden scrollbar */
+  .reels-scroll-nav { display: flex; flex-direction: column; gap: 10px; flex: 0 0 auto; }
+  .reels-scroll-nav button {
+    width: 40px; height: 40px; border-radius: 50%;
+    border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text);
+    box-shadow: var(--shadow-sm); cursor: pointer; display: grid; place-items: center; font-size: .85rem;
+  }
+  .reels-scroll-nav button:hover { border-color: var(--color-accent); color: var(--color-accent); }
+  .reels-scroll-nav button:active { transform: translateY(1px); }
 
   .reel-action {
     width: 52px;
