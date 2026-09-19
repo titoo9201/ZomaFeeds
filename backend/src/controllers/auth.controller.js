@@ -21,109 +21,122 @@ function setAuthCookie(res, id, role) {
 
 // Shared by both roles: request a 4-digit OTP by email, for either registering or logging in.
 async function requestOtp(req, res) {
-    const { email, role, purpose } = req.body;
-
-    if (!EMAIL_REGEX.test(email || '')) return res.status(400).json({ message: 'Please enter a valid email address' });
-    if (!['user', 'foodPartner'].includes(role)) return res.status(400).json({ message: 'Invalid role' });
-    if (!['register', 'login'].includes(purpose)) return res.status(400).json({ message: 'Invalid purpose' });
-
-    const Model = role === 'user' ? userModel : foodPartnerModel;
-    const existingAccount = await Model.findOne({ email });
-
-    if (purpose === 'register' && existingAccount) return res.status(400).json({ message: 'An account with this email already exists' });
-    if (purpose === 'login' && !existingAccount) return res.status(400).json({ message: 'No account found with this email' });
-
     try {
-        await otpService.requestOtp({ email, role, purpose });
-    } catch (error) {
-        return res.status(502).json({ message: 'Could not send the OTP email right now. Please try again.' });
-    }
+        const { email, role, purpose } = req.body;
 
-    res.json({ message: 'A 4-digit code has been sent to your email' });
+        if (!EMAIL_REGEX.test(email || '')) return res.status(400).json({ message: 'Please enter a valid email address' });
+        if (!['user', 'foodPartner'].includes(role)) return res.status(400).json({ message: 'Invalid role' });
+        if (!['register', 'login'].includes(purpose)) return res.status(400).json({ message: 'Invalid purpose' });
+
+        const Model = role === 'user' ? userModel : foodPartnerModel;
+        const existingAccount = await Model.findOne({ email });
+
+        if (purpose === 'register' && existingAccount) return res.status(400).json({ message: 'An account with this email already exists' });
+        if (purpose === 'login' && !existingAccount) return res.status(400).json({ message: 'No account found with this email' });
+
+        try {
+            await otpService.requestOtp({ email, role, purpose });
+        } catch (mailError) {
+            console.error('[requestOtp] sending OTP failed:', mailError);
+            return res.status(502).json({ message: mailError.message || 'Could not send the OTP email right now. Please try again.' });
+        }
+
+        res.json({ message: 'A 4-digit code has been sent to your email' });
+    } catch (error) {
+        console.error('[requestOtp] failed:', error);
+        res.status(500).json({ message: error.message || 'Could not process the OTP request right now' });
+    }
 }
 
 async function registerUser(req, res) {
+    try {
+        const { fullName, email, password, otp } = req.body;
 
-    const { fullName, email, password, otp } = req.body;
+        if (!EMAIL_REGEX.test(email || '')) return res.status(400).json({ message: 'Please enter a valid email address' });
+        if (!password && !otp) return res.status(400).json({ message: 'Provide a password or an OTP to register' });
 
-    if (!EMAIL_REGEX.test(email || '')) return res.status(400).json({ message: 'Please enter a valid email address' });
-    if (!password && !otp) return res.status(400).json({ message: 'Provide a password or an OTP to register' });
-
-    const isUserAlreadyExists = await userModel.findOne({
-        email
-    })
-
-    if (isUserAlreadyExists) {
-        return res.status(400).json({
-            message: "User already exists"
+        const isUserAlreadyExists = await userModel.findOne({
+            email
         })
-    }
 
-    let hashedPassword;
-    if (otp) {
-        const isOtpValid = await otpService.verifyOtp({ email, role: 'user', purpose: 'register', otp });
-        if (!isOtpValid) return res.status(400).json({ message: 'Invalid or expired OTP' });
-    } else {
-        hashedPassword = await bcrypt.hash(password, 10);
-    }
-
-    const profilePicture = req.file ? (await storageService.uploadFile(req.file.buffer, `profile-${uuid()}`)).url : undefined;
-    const user = await userModel.create({
-        fullName,
-        email,
-        password: hashedPassword,
-        profilePicture
-    })
-
-    setAuthCookie(res, user._id, 'user');
-    mailService.sendWelcomeEmail(email, fullName).catch(error => console.error('[mail] welcome email failed:', error.message));
-
-    res.status(201).json({
-        message: "User registered successfully",
-        user: {
-            _id: user._id,
-            email: user.email,
-            fullName: user.fullName,
-            profilePicture: user.profilePicture
+        if (isUserAlreadyExists) {
+            return res.status(400).json({
+                message: "User already exists"
+            })
         }
-    })
 
+        let hashedPassword;
+        if (otp) {
+            const isOtpValid = await otpService.verifyOtp({ email, role: 'user', purpose: 'register', otp });
+            if (!isOtpValid) return res.status(400).json({ message: 'Invalid or expired OTP' });
+        } else {
+            hashedPassword = await bcrypt.hash(password, 10);
+        }
+
+        const profilePicture = req.file ? (await storageService.uploadFile(req.file.buffer, `profile-${uuid()}`)).url : undefined;
+        const user = await userModel.create({
+            fullName,
+            email,
+            password: hashedPassword,
+            profilePicture
+        })
+
+        setAuthCookie(res, user._id, 'user');
+        mailService.sendWelcomeEmail(email, fullName).catch(error => console.error('[mail] welcome email failed:', error.message));
+
+        res.status(201).json({
+            message: "User registered successfully",
+            user: {
+                _id: user._id,
+                email: user.email,
+                fullName: user.fullName,
+                profilePicture: user.profilePicture
+            }
+        })
+    } catch (error) {
+        console.error('[registerUser] failed:', error);
+        res.status(500).json({ message: error.message || 'Could not register right now' });
+    }
 }
 
 async function loginUser(req, res) {
+    try {
+        const { email, password, otp } = req.body;
 
-    const { email, password, otp } = req.body;
-
-    const user = await userModel.findOne({
-        email
-    })
-
-    if (!user) {
-        return res.status(400).json({
-            message: "Invalid email or password"
+        const user = await userModel.findOne({
+            email
         })
-    }
 
-    if (otp) {
-        const isOtpValid = await otpService.verifyOtp({ email, role: 'user', purpose: 'login', otp });
-        if (!isOtpValid) return res.status(400).json({ message: 'Invalid or expired OTP' });
-    } else {
-        if (!user.password) return res.status(400).json({ message: 'This account has no password set. Log in with an OTP instead.' });
-        const isPasswordValid = await bcrypt.compare(password || '', user.password);
-        if (!isPasswordValid) return res.status(400).json({ message: "Invalid email or password" });
-    }
-
-    setAuthCookie(res, user._id, 'user');
-
-    res.status(200).json({
-        message: "User logged in successfully",
-        user: {
-            _id: user._id,
-            email: user.email,
-            fullName: user.fullName,
-            profilePicture: user.profilePicture
+        if (!user) {
+            return res.status(400).json({
+                message: "Invalid email or password"
+            })
         }
-    })
+
+        if (otp) {
+            const isOtpValid = await otpService.verifyOtp({ email, role: 'user', purpose: 'login', otp });
+            if (!isOtpValid) return res.status(400).json({ message: 'Invalid or expired OTP' });
+        } else {
+            if (!user.password) return res.status(400).json({ message: 'This account has no password set. Log in with an OTP instead.' });
+            const isPasswordValid = await bcrypt.compare(password || '', user.password);
+            if (!isPasswordValid) return res.status(400).json({ message: "Invalid email or password" });
+        }
+
+        setAuthCookie(res, user._id, 'user');
+
+        res.status(200).json({
+            message: "User logged in successfully",
+            user: {
+                _id: user._id,
+                email: user.email,
+                fullName: user.fullName,
+                profilePicture: user.profilePicture
+            }
+        })
+    } catch (error) {
+        console.error('[loginUser] failed:', error);
+        res.status(500).json({ message: error.message || 'Could not log in right now' });
+    }
 }
 
 function logoutUser(req, res) {
@@ -135,96 +148,103 @@ function logoutUser(req, res) {
 
 
 async function registerFoodPartner(req, res) {
+    try {
+        const { name, email, password, otp, phone, address, contactName, restaurantType } = req.body;
 
-    const { name, email, password, otp, phone, address, contactName, restaurantType } = req.body;
+        if (!EMAIL_REGEX.test(email || '')) return res.status(400).json({ message: 'Please enter a valid email address' });
+        if (!password && !otp) return res.status(400).json({ message: 'Provide a password or an OTP to register' });
 
-    if (!EMAIL_REGEX.test(email || '')) return res.status(400).json({ message: 'Please enter a valid email address' });
-    if (!password && !otp) return res.status(400).json({ message: 'Provide a password or an OTP to register' });
-
-    const isAccountAlreadyExists = await foodPartnerModel.findOne({
-        email
-    })
-
-    if (isAccountAlreadyExists) {
-        return res.status(400).json({
-            message: "Food partner account already exists"
+        const isAccountAlreadyExists = await foodPartnerModel.findOne({
+            email
         })
-    }
 
-    let hashedPassword;
-    if (otp) {
-        const isOtpValid = await otpService.verifyOtp({ email, role: 'foodPartner', purpose: 'register', otp });
-        if (!isOtpValid) return res.status(400).json({ message: 'Invalid or expired OTP' });
-    } else {
-        hashedPassword = await bcrypt.hash(password, 10);
-    }
-
-    const profilePicture = req.file ? (await storageService.uploadFile(req.file.buffer, `profile-${uuid()}`)).url : undefined;
-    const foodPartner = await foodPartnerModel.create({
-        name,
-        email,
-        password: hashedPassword,
-        phone,
-        address,
-        contactName,
-        profilePicture,
-        restaurantType
-    })
-
-    setAuthCookie(res, foodPartner._id, 'foodPartner');
-    mailService.sendWelcomeEmail(email, name).catch(error => console.error('[mail] welcome email failed:', error.message));
-
-    res.status(201).json({
-        message: "Food partner registered successfully",
-        foodPartner: {
-            _id: foodPartner._id,
-            email: foodPartner.email,
-            name: foodPartner.name,
-            address: foodPartner.address,
-            contactName: foodPartner.contactName,
-            phone: foodPartner.phone,
-            profilePicture: foodPartner.profilePicture
-            , restaurantType: foodPartner.restaurantType
+        if (isAccountAlreadyExists) {
+            return res.status(400).json({
+                message: "Food partner account already exists"
+            })
         }
-    })
 
+        let hashedPassword;
+        if (otp) {
+            const isOtpValid = await otpService.verifyOtp({ email, role: 'foodPartner', purpose: 'register', otp });
+            if (!isOtpValid) return res.status(400).json({ message: 'Invalid or expired OTP' });
+        } else {
+            hashedPassword = await bcrypt.hash(password, 10);
+        }
+
+        const profilePicture = req.file ? (await storageService.uploadFile(req.file.buffer, `profile-${uuid()}`)).url : undefined;
+        const foodPartner = await foodPartnerModel.create({
+            name,
+            email,
+            password: hashedPassword,
+            phone,
+            address,
+            contactName,
+            profilePicture,
+            restaurantType
+        })
+
+        setAuthCookie(res, foodPartner._id, 'foodPartner');
+        mailService.sendWelcomeEmail(email, name).catch(error => console.error('[mail] welcome email failed:', error.message));
+
+        res.status(201).json({
+            message: "Food partner registered successfully",
+            foodPartner: {
+                _id: foodPartner._id,
+                email: foodPartner.email,
+                name: foodPartner.name,
+                address: foodPartner.address,
+                contactName: foodPartner.contactName,
+                phone: foodPartner.phone,
+                profilePicture: foodPartner.profilePicture
+                , restaurantType: foodPartner.restaurantType
+            }
+        })
+    } catch (error) {
+        console.error('[registerFoodPartner] failed:', error);
+        res.status(500).json({ message: error.message || 'Could not register right now' });
+    }
 }
 
 async function loginFoodPartner(req, res) {
+    try {
+        const { email, password, otp } = req.body;
 
-    const { email, password, otp } = req.body;
-
-    const foodPartner = await foodPartnerModel.findOne({
-        email
-    })
-
-    if (!foodPartner) {
-        return res.status(400).json({
-            message: "Invalid email or password"
+        const foodPartner = await foodPartnerModel.findOne({
+            email
         })
-    }
 
-    if (otp) {
-        const isOtpValid = await otpService.verifyOtp({ email, role: 'foodPartner', purpose: 'login', otp });
-        if (!isOtpValid) return res.status(400).json({ message: 'Invalid or expired OTP' });
-    } else {
-        if (!foodPartner.password) return res.status(400).json({ message: 'This account has no password set. Log in with an OTP instead.' });
-        const isPasswordValid = await bcrypt.compare(password || '', foodPartner.password);
-        if (!isPasswordValid) return res.status(400).json({ message: "Invalid email or password" });
-    }
-
-    setAuthCookie(res, foodPartner._id, 'foodPartner');
-
-    res.status(200).json({
-        message: "Food partner logged in successfully",
-        foodPartner: {
-            _id: foodPartner._id,
-            email: foodPartner.email,
-            name: foodPartner.name,
-            profilePicture: foodPartner.profilePicture
-            , restaurantType: foodPartner.restaurantType
+        if (!foodPartner) {
+            return res.status(400).json({
+                message: "Invalid email or password"
+            })
         }
-    })
+
+        if (otp) {
+            const isOtpValid = await otpService.verifyOtp({ email, role: 'foodPartner', purpose: 'login', otp });
+            if (!isOtpValid) return res.status(400).json({ message: 'Invalid or expired OTP' });
+        } else {
+            if (!foodPartner.password) return res.status(400).json({ message: 'This account has no password set. Log in with an OTP instead.' });
+            const isPasswordValid = await bcrypt.compare(password || '', foodPartner.password);
+            if (!isPasswordValid) return res.status(400).json({ message: "Invalid email or password" });
+        }
+
+        setAuthCookie(res, foodPartner._id, 'foodPartner');
+
+        res.status(200).json({
+            message: "Food partner logged in successfully",
+            foodPartner: {
+                _id: foodPartner._id,
+                email: foodPartner.email,
+                name: foodPartner.name,
+                profilePicture: foodPartner.profilePicture
+                , restaurantType: foodPartner.restaurantType
+            }
+        })
+    } catch (error) {
+        console.error('[loginFoodPartner] failed:', error);
+        res.status(500).json({ message: error.message || 'Could not log in right now' });
+    }
 }
 
 function logoutFoodPartner(req, res) {

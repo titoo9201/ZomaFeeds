@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Clapperboard, Star, Bike, Music2 } from 'lucide-react'
+import ThemeToggle from '../../components/ThemeToggle'
 import '../../styles/landing.css'
 
 const FEATURES = [
@@ -35,6 +36,7 @@ const LandingPage = () => <div className="landing-page">
     <div className="landing-nav-inner">
       <span className="landing-logo">ZomaFeeds</span>
       <nav className="landing-nav-links">
+        <ThemeToggle className="theme-toggle--inline" />
         <Link to="/food-partner/login" state={{ internal: true }}>Partner login</Link>
         <Link to="/user/login" state={{ internal: true }} className="landing-nav-cta">Sign in</Link>
       </nav>

@@ -4,3 +4,15 @@
 @media (max-width: 600px) {
   .theme-toggle { top: 12px; right: 10px; max-width: calc(100vw - 20px); }
 }
+
+/* The landing page renders its own inline toggle inside the nav bar (see .theme-toggle--inline
+   below), so the floating fixed one — which would otherwise sit on top of the nav's Sign in
+   button — is hidden whenever the landing page is on screen. */
+html:has(.landing-page) .theme-toggle:not(.theme-toggle--inline) { display: none; }
+
+.theme-toggle--inline { position: static; flex: 0 0 auto; padding: 7px 12px; font-size: .78rem; }
+
+@media (max-width: 480px) {
+  .theme-toggle--inline { padding: 7px 9px; }
+  .theme-toggle--inline span:last-child { display: none; }
+}
