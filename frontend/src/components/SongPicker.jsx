@@ -13,15 +13,32 @@ const SongPicker = ({ selectedSong, onSelect, onRemove }) => {
 
   useEffect(() => {
     if (!query.trim()) { setResults([]); return }
-    const timer = window.setTimeout(() => {
+    let cancelled = false
+    const searchTerm = query.trim()
+
+    // Our backend (and the song API it proxies to) run on free hosting tiers that spin down
+    // after inactivity — the first request after a while can 502/fail while it wakes up, so
+    // retry once after a short wait instead of surfacing that as a hard error immediately.
+    const runSearch = attempt => {
       setIsSearching(true)
       setError('')
-      api.get(`/api/songs/search?query=${encodeURIComponent(query.trim())}`)
-        .then(({ data }) => setResults(data.songs))
-        .catch(() => setError('Could not search songs right now.'))
-        .finally(() => setIsSearching(false))
-    }, 400)
-    return () => window.clearTimeout(timer)
+      api.get(`/api/songs/search?query=${encodeURIComponent(searchTerm)}`)
+        .then(({ data }) => { if (!cancelled) setResults(data.songs) })
+        .catch(requestError => {
+          if (cancelled) return
+          const isTransient = !requestError.response || requestError.response.status >= 500
+          if (isTransient && attempt === 1) {
+            setError('Server is waking up, retrying...')
+            window.setTimeout(() => { if (!cancelled) runSearch(2) }, 4000)
+            return
+          }
+          setError('Could not search songs right now.')
+        })
+        .finally(() => { if (!cancelled) setIsSearching(false) })
+    }
+
+    const timer = window.setTimeout(() => runSearch(1), 400)
+    return () => { cancelled = true; window.clearTimeout(timer) }
   }, [query])
 
   useEffect(() => () => audioRef.current?.pause(), [])
