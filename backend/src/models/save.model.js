@@ -16,6 +16,8 @@ const saveSchema = new mongoose.Schema({
     timestamps: true
 })
 
+saveSchema.index({ user: 1, food: 1 }, { unique: true });
+
 
 const saveModel = mongoose.model('save', saveSchema);
 

@@ -1,53 +1,59 @@
-import React from 'react';
+import React, { useState } from 'react';
 import '../../styles/auth-shared.css';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import api from '../../config/api';
+import { Link, useNavigate } from 'react-router-dom';
+import AuthCredentialField from '../../components/AuthCredentialField';
+import AuthClose from '../../components/AuthClose';
 
 const UserLogin = () => {
 
   const navigate = useNavigate()
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const email = e.target.email.value;
-    const password = e.target.password.value;
+    const password = e.target.password?.value;
+    const otp = e.target.otp?.value;
 
     try {
-      const response = await axios.post("http://localhost:3000/api/auth/user/login", {
+      setError('');
+      setIsSubmitting(true);
+      await api.post('/api/auth/user/login', {
         email,
-        password
-      }, { withCredentials: true });
+        password,
+        otp
+      });
 
-      console.log(response.data);
       navigate("/home"); // Navigate only on success
     } catch (error) {
-      console.error("Login error:", error);
-      // Optionally, display an error message to the user (e.g., via state or an alert)
-      alert("Login failed: " + (error.response?.data?.message || error.message));
+      setError(error.response?.data?.message || 'Login failed. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
     <div className="auth-page-wrapper">
+      <AuthClose />
       <div className="auth-card" role="region" aria-labelledby="user-login-title">
         <header>
           <h1 id="user-login-title" className="auth-title">Welcome back</h1>
           <p className="auth-subtitle">Sign in to continue your food journey.</p>
         </header>
-        <form className="auth-form" onSubmit={handleSubmit} noValidate>
+        <form className="auth-form" onSubmit={handleSubmit}>
           <div className="field-group">
             <label htmlFor="email">Email</label>
-            <input id="email" name="email" type="email" placeholder="you@example.com" autoComplete="email" />
+            <input id="email" name="email" type="email" placeholder="you@example.com" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
-          <div className="field-group">
-            <label htmlFor="password">Password</label>
-            <input id="password" name="password" type="password" placeholder="••••••••" autoComplete="current-password" />
-          </div>
-          <button className="auth-submit" type="submit">Sign In</button>
+          <AuthCredentialField role="user" purpose="login" email={email} />
+          {error && <p className="error-text" role="alert">{error}</p>}
+          <button className="auth-submit" type="submit" disabled={isSubmitting}>{isSubmitting ? 'Signing in...' : 'Sign In'}</button>
         </form>
         <div className="auth-alt-action">
-          New here? <a href="/user/register">Create account</a>
+          New here? <Link to="/user/register" state={{ internal: true }}>Create account</Link>
         </div>
       </div>
     </div>

@@ -1,0 +1,22 @@
+@import './theme.css';
+
+.field-group input[type="email"],
+.field-group input[type="tel"] {
+  appearance: none;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
+  padding: 10px 12px;
+  font: inherit;
+  border-radius: var(--radius-sm);
+  outline: none;
+  color: var(--color-text);
+}
+
+.edit-profile-form { display: grid; gap: var(--space-4); margin-top: var(--space-5); padding-top: var(--space-5); border-top: 1px dashed var(--color-border); }
+.edit-profile-avatar-row { display: flex; align-items: center; gap: 14px; }
+.edit-profile-avatar-preview { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: var(--color-surface-alt); border: 2px solid var(--color-border); }
+.edit-profile-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+
+@media (max-width: 560px) {
+  .edit-profile-two-col { grid-template-columns: 1fr; }
+}

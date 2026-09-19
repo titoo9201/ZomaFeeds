@@ -1,0 +1,6 @@
+.theme-toggle { position: fixed; z-index: 100; top: 18px; right: 22px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--color-border); border-radius: 999px; padding: 8px 12px; background: color-mix(in srgb, var(--color-surface) 88%, transparent); color: var(--color-text); box-shadow: var(--shadow-sm); cursor: pointer; font: inherit; font-size: .78rem; }
+.theme-toggle:hover { border-color: var(--color-accent); }
+
+@media (max-width: 600px) {
+  .theme-toggle { top: 12px; right: 10px; max-width: calc(100vw - 20px); }
+}

@@ -1,505 +1,514 @@
+<div align="center">
+
+<img src="frontend/public/icon.svg" width="180" alt="ZomaFeeds logo" />
+
 # ZomaFeeds
 
-ZomaFeeds is a full-stack food discovery and short-video app where users can view food videos, like them, save them, and food partners can register, log in, and upload food content.
+**Food, but make it watchable.**
 
-This project contains:
-- a Node.js + Express backend
-- a MongoDB database
-- a React + Vite frontend
-- JWT-based authentication with cookies
-- video uploads via ImageKit
-- a reels-style social feed UI
+Scroll bite-sized food reels from restaurants near you, then order in a tap — or bring your restaurant onto ZomaFeeds and reach hungry customers instantly.
 
----
+[![Node.js](https://img.shields.io/badge/Node.js-runtime-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org)
+[![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)](https://expressjs.com)
+[![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)](https://react.dev)
+[![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)](https://vitejs.dev)
+[![MongoDB](https://img.shields.io/badge/MongoDB-8%20(Mongoose)-47A248?logo=mongodb&logoColor=white)](https://www.mongodb.com)
+[![JWT](https://img.shields.io/badge/Auth-JWT%20%2B%20OTP-black?logo=jsonwebtokens&logoColor=white)](https://jwt.io)
+[![License](https://img.shields.io/badge/License-Proprietary-lightgrey)](#-license)
 
-## 1. Project Overview
-
-The app is designed around a simple flow:
-
-1. User or food partner registers/logs in.
-2. Food partners upload food videos with a name and description.
-3. Users browse the home feed and interact with food posts.
-4. Users can like and save food items.
-5. Each food partner has a profile page showing their uploaded food items.
+</div>
 
 ---
 
-## 2. Tech Stack
+## 📑 Table of contents
 
-### Backend
-- Node.js
-- Express.js
-- MongoDB + Mongoose
-- JWT for authentication
-- Cookie-based auth
-- Multer for file upload handling
-- ImageKit for media storage
-- CORS for cross-origin request handling
-
-### Frontend
-- React
-- Vite
-- React Router DOM
-- Axios for API calls
+- [Overview](#-overview)
+- [Features](#-features)
+- [Tech stack](#-tech-stack)
+- [Architecture](#-architecture)
+- [Data model](#-data-model)
+- [Key flows](#-key-flows)
+- [Project structure](#-project-structure)
+- [Getting started](#-getting-started)
+- [Environment variables](#-environment-variables)
+- [API reference](#-api-reference)
+- [Design system](#-design-system)
+- [Roadmap](#-roadmap)
+- [Contributing](#-contributing)
+- [Contact](#-contact)
 
 ---
 
-## 3. Project Structure
+## 🍜 Overview
+
+**ZomaFeeds** is a full-stack, two-sided food delivery platform built around a simple idea borrowed from Instagram Reels: **you decide what to eat by watching it, not by reading a menu.**
+
+There are two experiences living in one codebase, guarded by role-based routing:
+
+- **For foodies** — an Instagram-Reels-style vertical feed of real dishes, with likes, saves, comments, star ratings, and a Zomato-style checkout that ends in a live order tracker.
+- **For restaurant partners** — a dashboard to run the kitchen: accept/reject orders, toggle open/closed, manage the menu, attach a soundtrack to every reel, and watch ratings and revenue roll in.
+
+Everything — auth, media storage, email, and even the background music search — is wired to real, working services (MongoDB, ImageKit, Gmail SMTP, a self-hosted JioSaavn API), not mocked stubs.
+
+---
+
+## ✨ Features
+
+### 🧑‍🍳 For foodies
+
+| | |
+|---|---|
+| 🎬 | **Reels-first discovery** — a vertical, swipeable feed of food videos (IntersectionObserver-driven autoplay), instead of a boring list of restaurants |
+| ❤️ | **Like, save & comment** on any reel, with live counts |
+| ⭐ | **Dish + restaurant ratings** — every reel shows its own average rating, and checkout shows both the dish's rating and the restaurant's overall rating |
+| 🔎 | **Smart Home feed** — top-ranked dishes by popularity by default; the full restaurant directory only appears once you start searching |
+| 🛒 | **Zomato-style checkout** — quantity stepper (drops the item once you go below 1), delivery address, live bill summary |
+| 💳 | **Dummy payment flow** — pay by UPI, Card, or Cash on Delivery (no real money ever moves) |
+| 📦 | **Live order tracking** — `pending → preparing → out for delivery → delivered`, with a waiting screen while the restaurant decides |
+| 🌟 | **Post-order review prompt** — a 1–5 star review modal opens the moment your order is accepted |
+| 🔔 | **"Notify me" for closed restaurants** — get an in-app notification the second they reopen |
+| 🔑 | **Password *or* OTP auth** — register/log in with a password, or a 4-digit code emailed to you; both work everywhere |
+| 🔈 | **Reel sound control** — a reel plays its own audio by default; if the partner attached a song, the video mutes and the song plays instead, all behind one global mute toggle |
+| 🌗 | **Light/dark theme**, tuned to the brand palette, remembered across visits |
+
+### 🍽️ For restaurant partners
+
+| | |
+|---|---|
+| 📊 | **Dashboard-first login** — lands straight on a dashboard, not a bare menu list |
+| 🟢 | **Open/Closed switch** — flip your restaurant's status any time, independent of your configured hours |
+| 🕘 | **Order buckets** — Today / Yesterday / Past, each with orders-served and revenue stats |
+| ✅❌ | **Accept / Reject workflow** — accepting moves the order into your kitchen queue; rejecting requires a reason and auto-refunds a paid order |
+| 🚚 | **One-tap status advance** — `preparing → out for delivery → delivered` |
+| 🍕 | **Full menu control** — add, edit (name, description, price, category, availability), or delete any item |
+| 🎵 | **Attach a song to a reel**, Instagram-style, searched live from a real music API |
+| ⭐ | **Per-item and restaurant-wide ratings** visible right on the dashboard and profile |
+| 🏪 | **Editable business profile** — name, contact, phone, address, restaurant type, photo |
+| 📧 | **Automatic emails** — a welcome email on signup, and an itemised bill emailed to the customer the moment you accept their order |
+
+### 🛠️ Under the hood
+
+- **Role-based route guards** on the frontend (`Guard`) — a customer can never render a partner-only page and vice versa.
+- **`InternalOnly` navigation guard** — the pre-auth register/login screens only render when reached by clicking through the app; typing the URL directly (or bookmarking it) bounces you back to the landing page.
+- **HTTP-only JWT cookies** for auth, checked against MongoDB on every protected request.
+- **Password *and* OTP are first-class** on both register and login, for both roles — bcrypt-hashed either way.
+- **`validateModifiedOnly` Mongoose pattern** on every partial update, so a legacy document missing a newer required field never blocks an unrelated edit.
+- Every design decision is CSS-scoped: no monolithic stylesheet — each feature owns its own file under `frontend/src/styles/`.
+
+---
+
+## 🧰 Tech stack
+
+| Layer | Technology |
+|---|---|
+| **Frontend** | React 19, Vite 7, React Router 7, Axios, `lucide-react` icons |
+| **Backend** | Node.js, Express 5 |
+| **Database** | MongoDB, Mongoose 8 (ODM) |
+| **Auth** | JWT (`httpOnly` cookies), `bcryptjs` for password + OTP hashing |
+| **File uploads** | Multer (in-memory) → ImageKit (video/image CDN) |
+| **Email** | Nodemailer over Gmail SMTP |
+| **Music search** | JioSaavn API (self-hosted instance) |
+| **Linting** | ESLint 9 (flat config) |
+
+---
+
+## 🏗️ Architecture
+
+```mermaid
+flowchart TD
+    subgraph Client["🖥️ React 19 + Vite SPA"]
+        Landing["Landing page"]
+        Auth["Auth pages<br/>(password / OTP)"]
+        Reels["Reels feed<br/>(Home · Reels · Saved)"]
+        Checkout["Checkout & payment"]
+        Dashboard["Partner dashboard"]
+    end
+
+    subgraph API["⚙️ Express 5 REST API"]
+        AuthC["Auth + OTP controller"]
+        FoodC["Food / reels controller"]
+        PartnerC["Food-partner controller"]
+        OrderC["Order controller"]
+        ReviewC["Review & comment controllers"]
+        SongC["Song search controller"]
+        NotifC["Notification controller"]
+    end
+
+    DB[("MongoDB<br/>via Mongoose")]
+    ImageKit[["ImageKit<br/>video / image CDN"]]
+    Gmail[["Gmail SMTP<br/>via Nodemailer"]]
+    Saavn[["JioSaavn API<br/>song search"]]
+
+    Client -- "Axios, JWT cookie" --> API
+    AuthC --> DB
+    FoodC --> DB
+    PartnerC --> DB
+    OrderC --> DB
+    ReviewC --> DB
+    NotifC --> DB
+    FoodC -- "upload / stream video" --> ImageKit
+    PartnerC -- "profile picture" --> ImageKit
+    AuthC -- "OTP · welcome email" --> Gmail
+    OrderC -- "order bill email" --> Gmail
+    SongC -- "search a track" --> Saavn
+```
+
+---
+
+## 🗂️ Data model
+
+```mermaid
+erDiagram
+    USER ||--o{ ORDER : places
+    USER ||--o{ REVIEW : writes
+    USER ||--o{ COMMENT : writes
+    USER ||--o{ LIKE : gives
+    USER ||--o{ SAVE : bookmarks
+    USER ||--o{ NOTIFICATION : receives
+    USER ||--o{ NOTIFYREQUEST : requests
+
+    FOODPARTNER ||--o{ FOOD : owns
+    FOODPARTNER ||--o{ NOTIFYREQUEST : "reopen alert for"
+
+    FOOD ||--o{ ORDER : "ordered as"
+    FOOD ||--o{ REVIEW : "reviewed in"
+    FOOD ||--o{ COMMENT : "commented on"
+    FOOD ||--o{ LIKE : "liked in"
+    FOOD ||--o{ SAVE : "saved in"
+
+    USER {
+        string fullName
+        string email
+        string password
+        string profilePicture
+    }
+    FOODPARTNER {
+        string name
+        string contactName
+        string phone
+        string restaurantType
+        boolean isOpen
+        string openingTime
+        string closingTime
+    }
+    FOOD {
+        string name
+        string category
+        number price
+        boolean isAvailable
+        object song
+    }
+    ORDER {
+        number quantity
+        string address
+        string status
+        string paymentStatus
+        string paymentMethod
+        number total
+    }
+    REVIEW {
+        number rating
+        string text
+    }
+    COMMENT {
+        string text
+    }
+    NOTIFICATION {
+        string message
+        boolean read
+    }
+    NOTIFYREQUEST {
+        boolean fulfilled
+    }
+```
+
+---
+
+## 🔁 Key flows
+
+### Order lifecycle
+
+```mermaid
+sequenceDiagram
+    actor U as Customer
+    participant FE as React App
+    participant API as Express API
+    participant P as Restaurant Partner
+
+    U->>FE: Tap "Order now" on a reel
+    FE->>API: POST /api/orders
+    API-->>FE: order created (status: pending)
+    FE->>API: PATCH /api/orders/:id/pay
+    API-->>FE: payment recorded
+    FE->>U: "Waiting for the restaurant..." screen
+
+    API-->>P: Order appears on the Dashboard
+
+    alt Partner accepts
+        P->>API: PATCH /api/orders/:id/respond (accept)
+        API->>API: status → preparing
+        API-->>U: order-bill email sent
+        FE->>U: Order-confirmed modal + star review prompt
+        P->>API: PATCH /api/orders/:id/advance (×2)
+        API->>API: preparing → out_for_delivery → delivered
+    else Partner rejects
+        P->>API: PATCH /api/orders/:id/respond (reject, reason)
+        API->>API: status → cancelled (refunded if paid)
+        FE->>U: Rejection screen with reason
+    end
+```
+
+### Dual auth: password or OTP
+
+```mermaid
+flowchart LR
+    Start(["Register / Login"]) --> Choice{"Password or OTP?"}
+    Choice -- Password --> PwCheck["bcrypt hash / compare"]
+    Choice -- OTP --> Req["POST /api/auth/otp/request"]
+    Req --> Mail["4-digit code emailed via Gmail SMTP"]
+    Mail --> Enter["User enters the code"]
+    Enter --> OtpCheck["bcrypt compare against the otp collection"]
+    PwCheck --> Sign["Sign JWT, set httpOnly cookie"]
+    OtpCheck --> Sign
+    Sign --> Guard["Frontend role-based Guard"]
+    Guard --> Land["/home for users · /dashboard for partners"]
+```
+
+---
+
+## 📁 Project structure
 
 ```text
 ZomaFeeds/
 ├── backend/
-│   ├── package.json
-│   ├── server.js
+│   ├── server.js                 # entrypoint — loads .env, connects DB, starts Express
 │   └── src/
-│       ├── app.js
-│       ├── controllers/
-│       │   ├── auth.controller.js
-│       │   ├── food.controller.js
-│       │   └── food-partner.controller.js
-│       ├── db/
-│       │   └── db.js
-│       ├── middlewares/
-│       │   └── auth.middleware.js
-│       ├── models/
-│       │   ├── food.model.js
-│       │   ├── foodpartner.model.js
-│       │   ├── likes.model.js
-│       │   ├── save.model.js
-│       │   └── user.model.js
-│       ├── routes/
-│       │   ├── auth.routes.js
-│       │   ├── food.routes.js
-│       │   └── food-partner.routes.js
-│       └── services/
-│           └── storage.service.js
-├── frontend/
-│   ├── package.json
-│   ├── vite.config.js
-│   ├── index.html
-│   ├── eslint.config.js
-│   ├── public/
-│   └── src/
-│       ├── App.jsx
-│       ├── App.css
-│       ├── main.jsx
-│       ├── assets/
-│       ├── components/
-│       │   ├── BottomNav.jsx
-│       │   └── ReelFeed.jsx
-│       ├── pages/
-│       │   ├── auth/
-│       │   │   ├── ChooseRegister.jsx
-│       │   │   ├── FoodPartnerLogin.jsx
-│       │   │   ├── FoodPartnerRegister.jsx
-│       │   │   ├── UserLogin.jsx
-│       │   │   └── UserRegister.jsx
-│       │   ├── food-partner/
-│       │   │   ├── CreateFood.jsx
-│       │   │   └── Profile.jsx
-│       │   └── general/
-│       │       ├── Home.jsx
-│       │       └── Saved.jsx
-│       ├── routes/
-│       │   └── AppRoutes.jsx
-│       └── styles/
-│           ├── auth-shared.css
-│           ├── bottom-nav.css
-│           ├── create-food.css
-│           ├── profile.css
-│           ├── reels.css
-│           └── theme.css
-├── testcase/
-├── vdeos/
-└── README.md
+│       ├── app.js                # express app, middleware, route mounting
+│       ├── db/db.js              # mongoose connection
+│       ├── controllers/          # one controller per resource (auth, food, order, review...)
+│       ├── models/                # mongoose schemas
+│       ├── routes/                # express routers, wired to controllers + middleware
+│       ├── middlewares/           # authUserMiddleware / authFoodPartnerMiddleware / authAnyMiddleware
+│       └── services/              # storage (ImageKit), mail (Nodemailer), otp
+│
+└── frontend/
+    └── src/
+        ├── App.jsx                # theme provider + route tree
+        ├── routes/AppRoutes.jsx   # all routes, Guard + InternalOnly wrappers
+        ├── pages/
+        │   ├── auth/               # LandingPage, UserLogin/Register, FoodPartnerLogin/Register
+        │   ├── general/            # Home, Reels, Saved, OrderPage, PaymentPage, UserProfile
+        │   └── food-partner/       # Dashboard, CreateFood, ManageFood, Profile
+        ├── components/            # ReelFeed, SongPicker, PageNav, BottomNav, OrderConfirmModal...
+        ├── config/                 # axios instance, cart helpers
+        └── styles/                 # one CSS file per feature — no monolithic stylesheet
 ```
 
 ---
 
-## 4. File-by-File Explanation
+## 🚀 Getting started
+
+### Prerequisites
+
+- **Node.js** 18+ and npm
+- A **MongoDB** instance (local or Atlas)
+- An **ImageKit** account (for video/image storage)
+- A **Gmail account with an App Password** (for Nodemailer)
+- A reachable **JioSaavn API** instance (public or self-hosted) for song search
+
+### Clone
+
+```bash
+git clone https://github.com/titoo9201/ZomaFeeds.git
+cd ZomaFeeds
+```
 
 ### Backend
 
-#### [backend/server.js](backend/server.js)
-Starts the application.
-- Loads environment variables using dotenv.
-- Imports the Express app from [backend/src/app.js](backend/src/app.js).
-- Connects MongoDB through [backend/src/db/db.js](backend/src/db/db.js).
-- Starts the API server on port 3000.
+```bash
+cd backend
+npm install
+```
 
-#### [backend/src/app.js](backend/src/app.js)
-Main Express server config.
-- Enables CORS for the frontend at http://localhost:5173.
-- Uses cookie-parser to read JWT cookies.
-- Parses JSON requests.
-- Mounts the API routes:
-  - /api/auth
-  - /api/food
-  - /api/food-partner
+Create `backend/.env` (see [Environment variables](#-environment-variables) below), then:
 
-#### [backend/src/db/db.js](backend/src/db/db.js)
-Responsible for MongoDB connection.
-- Reads MONGODB_URL from the environment.
-- Connects to the database with Mongoose.
-
-#### [backend/src/routes/auth.routes.js](backend/src/routes/auth.routes.js)
-Handles all authentication routes.
-
-Routes:
-- POST /api/auth/user/register
-- POST /api/auth/user/login
-- GET /api/auth/user/logout
-- POST /api/auth/food-partner/register
-- POST /api/auth/food-partner/login
-- GET /api/auth/food-partner/logout
-
-These route handlers are connected to the auth controller.
-
-#### [backend/src/routes/food.routes.js](backend/src/routes/food.routes.js)
-Handles food-related operations.
-
-Routes:
-- POST /api/food/ - creates food item (food partner only)
-- GET /api/food/ - fetches all food items (logged-in user)
-- POST /api/food/like - toggle like for a food item
-- POST /api/food/save - toggle save for a food item
-- GET /api/food/save - fetch saved food items for current user
-
-This route also uses multer to upload a video file.
-
-#### [backend/src/routes/food-partner.routes.js](backend/src/routes/food-partner.routes.js)
-Routes related to food partner profiles.
-
-Route:
-- GET /api/food-partner/:id - fetch a food partner profile and their food items
-
-#### [backend/src/controllers/auth.controller.js](backend/src/controllers/auth.controller.js)
-Contains authentication logic.
-- registerUser()
-- loginUser()
-- logoutUser()
-- registerFoodPartner()
-- loginFoodPartner()
-- logoutFoodPartner()
-
-This file:
-- checks whether the user/partner already exists
-- hashes passwords using bcrypt
-- creates JWT token
-- sets cookie token on successful login/register
-- sends the user/food partner data back to the client
-
-#### [backend/src/controllers/food.controller.js](backend/src/controllers/food.controller.js)
-Handles all food feed operations.
-- createFood(): uploads a video and saves a new food item
-- getFoodItems(): fetches all food items
-- likeFood(): toggles like status for a user
-- saveFood(): toggles save status for a user
-- getSaveFood(): gets all saved items for the current user
-
-It also updates likeCount and savesCount in the food collection.
-
-#### [backend/src/controllers/food-partner.controller.js](backend/src/controllers/food-partner.controller.js)
-Gets a specific food partner and the list of food items uploaded by that food partner.
-
-#### [backend/src/middlewares/auth.middleware.js](backend/src/middlewares/auth.middleware.js)
-This file verifies the JWT in the token cookie.
-- authFoodPartnerMiddleware(): validates food partner auth
-- authUserMiddleware(): validates regular user auth
-
-If the token is invalid or missing, it responds with 401.
-
-#### [backend/src/models/user.model.js](backend/src/models/user.model.js)
-Defines the user schema.
-Fields:
-- fullName
-- email
-- password
-- timestamps
-
-#### [backend/src/models/foodpartner.model.js](backend/src/models/foodpartner.model.js)
-Defines the food partner schema.
-Fields:
-- name
-- contactName
-- phone
-- address
-- email
-- password
-
-#### [backend/src/models/food.model.js](backend/src/models/food.model.js)
-Defines the food item schema.
-Fields:
-- name
-- video
-- description
-- foodPartner
-- likeCount
-- savesCount
-
-#### [backend/src/models/save.model.js](backend/src/models/save.model.js)
-Tracks saved foods per user.
-- user
-- food
-- timestamps
-
-#### [backend/src/models/likes.model.js](backend/src/models/likes.model.js)
-Tracks likes for each food item per user.
-- user
-- food
-- timestamps
-
-#### [backend/src/services/storage.service.js](backend/src/services/storage.service.js)
-Handles file upload using ImageKit.
-- uploadFile(file, fileName)
-- sends the uploaded file to ImageKit and returns the uploaded URL
-
----
+```bash
+npm run dev        # nodemon server.js — http://localhost:3000
+```
 
 ### Frontend
 
-#### [frontend/src/App.jsx](frontend/src/App.jsx)
-Main app root.
-- Loads global CSS.
-- Renders the router via [frontend/src/routes/AppRoutes.jsx](frontend/src/routes/AppRoutes.jsx).
+```bash
+cd frontend
+npm install
+npm run dev         # http://localhost:5173
+```
 
-#### [frontend/src/routes/AppRoutes.jsx](frontend/src/routes/AppRoutes.jsx)
-Defines all application routes.
+### Production build (frontend)
 
-Routes:
-- /
-- /register
-- /user/register
-- /user/login
-- /food-partner/register
-- /food-partner/login
-- /home
-- /profile
-- /saved
-- /create-food
-- /food-partner/:id
-
-#### [frontend/src/components/ReelFeed.jsx](frontend/src/components/ReelFeed.jsx)
-Reusable reels-style video feed component.
-- plays visible videos automatically using IntersectionObserver
-- supports like and save buttons
-- renders each item with title/description and a store link
-
-#### [frontend/src/components/BottomNav.jsx](frontend/src/components/BottomNav.jsx)
-Bottom navigation bar for the mobile-style app.
-- Home
-- Saved
-
-#### [frontend/src/pages/auth/ChooseRegister.jsx](frontend/src/pages/auth/ChooseRegister.jsx)
-Landing/auth selection page.
-- lets the user choose between user signup and food partner signup
-
-#### [frontend/src/pages/auth/UserRegister.jsx](frontend/src/pages/auth/UserRegister.jsx)
-User registration form.
-
-#### [frontend/src/pages/auth/UserLogin.jsx](frontend/src/pages/auth/UserLogin.jsx)
-User login form.
-
-#### [frontend/src/pages/auth/FoodPartnerRegister.jsx](frontend/src/pages/auth/FoodPartnerRegister.jsx)
-Food partner registration form.
-
-#### [frontend/src/pages/auth/FoodPartnerLogin.jsx](frontend/src/pages/auth/FoodPartnerLogin.jsx)
-Food partner login form.
-
-#### [frontend/src/pages/general/Home.jsx](frontend/src/pages/general/Home.jsx)
-Shows the reels feed on the home screen.
-- calls GET /api/food
-- loads all food items
-- sends like and save requests to the backend
-
-#### [frontend/src/pages/general/Saved.jsx](frontend/src/pages/general/Saved.jsx)
-Shows the saved items page.
-- calls GET /api/food/save
-- renders saved food videos in a reels feed
-
-#### [frontend/src/pages/food-partner/CreateFood.jsx](frontend/src/pages/food-partner/CreateFood.jsx)
-Food partner upload page.
-- selects a video file
-- uploads the video to the backend
-- sends name + description + video to POST /api/food
-
-#### [frontend/src/pages/food-partner/Profile.jsx](frontend/src/pages/food-partner/Profile.jsx)
-Displays a food partner profile and their uploaded food items.
-- calls GET /api/food-partner/:id
-- shows store name/address and food videos
+```bash
+npm run build        # outputs to frontend/dist
+npm run preview       # preview the production build locally
+```
 
 ---
 
-## 5. API Routes Summary
+## 🔐 Environment variables
 
-### Authentication
+Create a `.env` file inside `backend/` — **it is git-ignored and must never be committed.**
 
-| Method | Endpoint | Description |
+| Variable | Required | Purpose |
 |---|---|---|
-| POST | /api/auth/user/register | Register a normal user |
-| POST | /api/auth/user/login | Login a normal user |
-| GET | /api/auth/user/logout | Logout a normal user |
-| POST | /api/auth/food-partner/register | Register a food partner |
-| POST | /api/auth/food-partner/login | Login a food partner |
-| GET | /api/auth/food-partner/logout | Logout a food partner |
+| `FRONTEND_URL` | ✅ | Origin allowed by CORS (e.g. `http://localhost:5173`) |
+| `JWT_SECRET` | ✅ | Secret used to sign/verify auth cookies |
+| `MONGODB_URL` | ✅ | MongoDB connection string |
+| `IMAGEKIT_PUBLIC_KEY` | ✅ | ImageKit public key |
+| `IMAGEKIT_PRIVATE_KEY` | ✅ | ImageKit private key |
+| `IMAGEKIT_URL_ENDPOINT` | ✅ | ImageKit delivery URL endpoint |
+| `SAAVN_API_BASE_URL` | ✅ | Base URL of a JioSaavn-compatible search API |
+| `MAIL_SERVICE` | ✅ | SMTP service name for Nodemailer (e.g. `gmail`) |
+| `MAIL_USER` | ✅ | Sender mailbox address |
+| `MAIL_PASSWORD` | ✅ | Mailbox app password (not your regular password) |
 
-### Food
-
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | /api/food/ | Create a food post (requires food partner auth) |
-| GET | /api/food/ | Get all food items |
-| POST | /api/food/like | Like or unlike a food item |
-| POST | /api/food/save | Save or unsave a food item |
-| GET | /api/food/save | Get saved food items for current user |
-
-### Food Partner
-
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | /api/food-partner/:id | Get food partner profile and uploaded food items |
+> If `MAIL_USER` / `MAIL_PASSWORD` are left unset, the mail service no-ops with a console warning instead of crashing — everything else keeps working.
 
 ---
 
-## 6. Environment Setup
+## 📡 API reference
 
-Create a `.env` file inside the [backend](backend) folder.
+All protected routes read a JWT from an `httpOnly` cookie set at login. `user` and `foodPartner` are two separate roles with separate cookies/guards.
 
-Example:
+<details>
+<summary><strong>Auth — <code>/api/auth</code></strong></summary>
 
-```env
-MONGODB_URL=mongodb://localhost:27017/zomafeeds
-JWT_SECRET=your_jwt_secret_key
-IMAGEKIT_PUBLIC_KEY=your_imagekit_public_key
-IMAGEKIT_PRIVATE_KEY=your_imagekit_private_key
-IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/your_imagekit_id/
-```
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/me` | — | Returns the current session (role + basic info), or `null` |
+| POST | `/otp/request` | — | Emails a 4-digit OTP for register or login |
+| POST | `/user/register` | — | Register a user (password and/or OTP) |
+| POST | `/user/login` | — | Log in a user (password or OTP) |
+| GET | `/user/logout` | user | Clear the session cookie |
+| GET | `/user/profile` | user | Get the logged-in user's profile |
+| PATCH | `/user/profile` | user | Update name / email / picture |
+| POST | `/food-partner/register` | — | Register a restaurant partner |
+| POST | `/food-partner/login` | — | Log in a restaurant partner |
+| GET | `/food-partner/logout` | foodPartner | Clear the session cookie |
 
-Important:
-- MongoDB must be running locally or you must provide a valid MongoDB connection string.
-- ImageKit keys are required because food upload uses [backend/src/services/storage.service.js](backend/src/services/storage.service.js).
+</details>
 
----
+<details>
+<summary><strong>Food / reels — <code>/api/food</code></strong></summary>
 
-## 7. Setup Instructions
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/` | foodPartner | Upload a new reel (video + song optional) |
+| GET | `/` | user | List every reel, enriched with liked/saved/rating |
+| POST | `/like` | user | Toggle like on a food item |
+| POST | `/save` | user | Toggle save on a food item |
+| GET | `/save` | user | List the user's saved reels |
+| PATCH | `/:id` | foodPartner | Edit name/description/price/category/availability/song |
+| DELETE | `/:id` | foodPartner | Delete an owned item |
 
-### 1. Install backend dependencies
+</details>
 
-```bash
-cd ZomaFeeds/backend
-npm install
-```
+<details>
+<summary><strong>Food partners — <code>/api/food-partner</code></strong></summary>
 
-### 2. Install frontend dependencies
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/` | user | List all partners, ranked by popularity |
+| GET | `/me` | foodPartner | Own profile + menu + stats |
+| PATCH | `/me` | foodPartner | Update business profile |
+| PATCH | `/me/hours` | foodPartner | Toggle open/closed and/or update hours |
+| POST | `/:id/notify-me` | user | Ask to be notified when a closed restaurant reopens |
+| GET | `/:id` | user | Public partner profile + menu |
 
-```bash
-cd ../frontend
-npm install
-```
+</details>
 
-### 3. Start the backend
+<details>
+<summary><strong>Orders — <code>/api/orders</code></strong></summary>
 
-```bash
-cd ../backend
-node server.js
-```
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/` | user | Place an order (blocked if closed/unavailable) |
+| GET | `/my` | user | The user's order history |
+| GET | `/partner/incoming?days=` | foodPartner | Orders bucketed into Today/Yesterday/Past + stats |
+| GET | `/:id` | user | A single order |
+| PATCH | `/:id/pay` | user | Dummy payment (UPI/Card/COD) |
+| PATCH | `/:id/respond` | foodPartner | Accept or reject a pending order |
+| PATCH | `/:id/advance` | foodPartner | Advance status one step forward |
 
-The backend will run on:
-- http://localhost:3000
+</details>
 
-### 4. Start the frontend
+<details>
+<summary><strong>Reviews & comments</strong></summary>
 
-```bash
-cd ../frontend
-npm run dev
-```
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/api/reviews` | user | 1–5 star review (only after an accepted order) |
+| GET | `/api/reviews/:foodId` | any | Reviews + average rating for a dish |
+| POST | `/api/comments` | user | Add a comment |
+| GET | `/api/comments/:foodId` | user | List comments |
+| DELETE | `/api/comments/:id` | user | Delete your own comment |
 
-The frontend will run on:
-- http://localhost:5173
+</details>
 
----
+<details>
+<summary><strong>Notifications & songs</strong></summary>
 
-## 8. How to Run the Full Project
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/api/notifications/my` | user | List in-app notifications |
+| PATCH | `/api/notifications/:id/read` | user | Mark one as read |
+| GET | `/api/songs/search?query=` | foodPartner | Search a track to attach to a reel |
 
-Open two terminals:
-
-### Terminal 1 - Backend
-```bash
-cd ZomaFeeds/backend
-node server.js
-```
-
-### Terminal 2 - Frontend
-```bash
-cd ZomaFeeds/frontend
-npm run dev
-```
-
-Then open:
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:3000
-
----
-
-## 9. Typical User Flow
-
-### User journey
-1. Register as a user.
-2. Login with email and password.
-3. Visit home feed.
-4. Browse videos.
-5. Like or save content.
-6. Check saved content from the bottom navigation.
-
-### Food partner journey
-1. Register as a food partner.
-2. Login as food partner.
-3. Upload a food video.
-4. Add a name and description.
-5. Go to profile page to see uploaded items.
+</details>
 
 ---
 
-## 10. Notes and Important Points
+## 🎨 Design system
 
-- Frontend CORS is configured for localhost:5173 in [backend/src/app.js](backend/src/app.js).
-- Auth uses cookies, so the frontend must send requests with credentials enabled.
-- The app relies on MongoDB models for users, food partners, likes, and saves.
-- The backend only starts successfully when the environment variables are configured correctly.
-- Food uploads depend on ImageKit, so a valid ImageKit account is required.
-
----
-
-## 11. Common Commands
-
-### Backend
-```bash
-cd ZomaFeeds/backend
-npm install
-node server.js
-```
-
-### Frontend
-```bash
-cd ZomaFeeds/frontend
-npm install
-npm run dev
-npm run build
-```
+- **Palette** — pulled straight from the ZomaFeeds mark: a warm coral → red → pink → purple gradient (`#F56A4C → #E23744 → #C13584 → #833AB4`) on a cream ground.
+- **Light theme** — warm ivory background, warm near-black text for strong contrast.
+- **Dark theme** — a soft charcoal-maroon ground instead of flat black, with brightened brand accents so the gradient still pops.
+- Every feature's styles live in their own file under `frontend/src/styles/` — there is no catch-all stylesheet to fight over.
 
 ---
 
-## 12. Summary
+## 🗺️ Roadmap
 
-ZomaFeeds is a social food-video application where:
-- users can discover food content
-- food partners can publish and manage their food posts
-- likes, saves, and profiles are all connected to MongoDB
-- the frontend is a React single-page app using React Router
-- the backend is a REST API secured with JWT cookies
-
-This project is a good example of a full-stack food app with authentication, media upload, social interactions, and profile-based content display.
+- [ ] Real payment gateway integration (Razorpay/Stripe) behind the existing dummy-payment UI
+- [ ] Push notifications (web push) alongside in-app notifications
+- [ ] Admin/moderation panel for reported reels and reviews
+- [ ] Order history export beyond the current 6-month self-serve window
 
 ---
 
-If you want, I can also create a more polished version of this README with screenshots, architecture diagram text, and a contributor setup section.
+## 🤝 Contributing
+
+1. Fork the repo and create a feature branch: `git checkout -b feature/my-feature`
+2. Commit your changes with a clear message
+3. Push and open a Pull Request describing what changed and why
+
+---
+
+## 📄 License
+
+No open-source license has been published for this project yet — all rights reserved by the author.
+
+---
+
+## 📬 Contact
+
+<div align="center">
+
+**Built by Titoo Singh**
+
+[![Gmail](https://img.shields.io/badge/Email-titoos67%40gmail.com-EA4335?logo=gmail&logoColor=white)](mailto:titoos67@gmail.com)
+[![GitHub](https://img.shields.io/badge/GitHub-titoo9201-181717?logo=github&logoColor=white)](https://github.com/titoo9201)
+[![Instagram](https://img.shields.io/badge/Instagram-titoo__9201-E4405F?logo=instagram&logoColor=white)](https://www.instagram.com/titoo_9201/)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-titoo--singh--dev-0A66C2?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/titoo-singh-dev/)
+
+**ZomaFeeds team:** [zomafeeds@gmail.com](mailto:zomafeeds@gmail.com)
+
+</div>

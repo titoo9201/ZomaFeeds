@@ -1,107 +1,127 @@
-import React, { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import api from '../config/api'
 
+const getStoredMuted = () => {
+  try { return window.localStorage.getItem('zomafeeds-muted') !== 'false' } catch { return true }
+}
 
-const ReelFeed = ({ items = [], onLike, onSave, emptyMessage = 'No videos yet.' }) => {
+const ReelFeed = ({ items = [], onLike, onSave, onCommentAdded, emptyMessage = 'No videos yet.' }) => {
   const videoRefs = useRef(new Map())
+  const audioRef = useRef(null)
+  const [activeItemId, setActiveItemId] = useState(null)
+  const [isMuted, setIsMuted] = useState(getStoredMuted)
+  const [activeComments, setActiveComments] = useState(null)
+  const [comments, setComments] = useState([])
+  const [commentText, setCommentText] = useState('')
+  const [commentsError, setCommentsError] = useState('')
+  const [isCommentsLoading, setIsCommentsLoading] = useState(false)
+  const [pendingAction, setPendingAction] = useState('')
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          const video = entry.target
-          if (!(video instanceof HTMLVideoElement)) return
-          if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
-            video.play().catch(() => { /* autoplay ke errors ignore karega  */ })
-          } else {
-            video.pause()
-          }
-        })
-      },
-      { threshold: [0, 0.25, 0.6, 0.9, 1] }
-    )
-
-    videoRefs.current.forEach((vid) => observer.observe(vid))
+    const observer = new IntersectionObserver(entries => entries.forEach(entry => {
+      const video = entry.target
+      if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+        video.play().catch(() => {})
+        setActiveItemId(video.dataset.id)
+      } else video.pause()
+    }), { threshold: [0, 0.6, 1] })
+    videoRefs.current.forEach(video => observer.observe(video))
     return () => observer.disconnect()
   }, [items])
 
-  const setVideoRef = (id) => (el) => {
-    if (!el) { videoRefs.current.delete(id); return }
-    videoRefs.current.set(id, el)
+  const activeItem = items.find(item => item._id === activeItemId) ?? items[0]
+
+  // A video with its own song attached stays muted (the song plays instead); otherwise it
+  // carries its own sound, gated by the shared mute toggle like every other reel.
+  useEffect(() => {
+    videoRefs.current.forEach((video, id) => {
+      const item = items.find(candidate => candidate._id === id)
+      video.muted = isMuted || Boolean(item?.song?.url)
+    })
+  }, [isMuted, items])
+
+  // One shared <audio> element plays whichever active reel's song, looping alongside its video.
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+    const songUrl = activeItem?.song?.url
+    if (!songUrl || isMuted) { audio.pause(); return }
+    if (audio.src !== songUrl) { audio.src = songUrl; audio.currentTime = 0 }
+    audio.loop = true
+    audio.play().catch(() => {})
+  }, [activeItem, isMuted])
+
+  useEffect(() => () => audioRef.current?.pause(), [])
+
+  const toggleMute = () => setIsMuted(previous => {
+    const next = !previous
+    try { window.localStorage.setItem('zomafeeds-muted', String(next)) } catch { /* storage unavailable */ }
+    return next
+  })
+
+  const openComments = async item => {
+    setActiveComments(item)
+    setCommentsError('')
+    setIsCommentsLoading(true)
+    try {
+      const { data } = await api.get(`/api/comments/${item._id}`)
+      setComments(data.comments)
+    } catch (error) {
+      setCommentsError(error.response?.data?.message || 'Could not load comments.')
+    } finally {
+      setIsCommentsLoading(false)
+    }
+  }
+  const addComment = async event => {
+    event.preventDefault()
+    if (!commentText.trim()) return
+    try {
+      setPendingAction('comment')
+      const { data } = await api.post('/api/comments', { food: activeComments._id, text: commentText })
+      setComments(previous => [data.comment, ...previous])
+      onCommentAdded?.(activeComments, comments.length + 1)
+      setCommentText('')
+    } catch (error) {
+      setCommentsError(error.response?.data?.message || 'Could not post comment.')
+    } finally {
+      setPendingAction('')
+    }
   }
 
-  return (
-    <div className="reels-page">
-      <div className="reels-feed" role="list">
-        {items.length === 0 && (
-          <div className="empty-state">
-            <p>{emptyMessage}</p>
-          </div>
-        )}
+  const runAction = async (action, item, callback) => {
+    const actionKey = `${action}-${item._id}`
+    if (pendingAction) return
+    setPendingAction(actionKey)
+    try {
+      await callback?.(item)
+    } finally {
+      setPendingAction('')
+    }
+  }
 
-        {items.map((item) => (
-          <section key={item._id} className="reel" role="listitem">
-            <video
-              ref={setVideoRef(item._id)}
-              className="reel-video"
-              src={item.video}
-              muted
-              playsInline
-              loop
-              preload="metadata"
-            />
+  const renderActionButtons = item => <>
+    <div className="reel-action-group"><button type="button" onClick={toggleMute} className="reel-action" aria-label={isMuted ? 'Turn sound on' : 'Turn sound off'}>{isMuted ? '🔇' : '🔊'}</button></div>
+    <div className="reel-action-group"><button disabled={Boolean(pendingAction)} onClick={() => runAction('like', item, onLike)} className={`reel-action ${item.liked ? 'is-active' : ''}`} aria-label="Like">{pendingAction === `like-${item._id}` ? '...' : '♥'}</button><div className="reel-action__count">{item.likeCount ?? 0}</div></div>
+    <div className="reel-action-group"><button disabled={Boolean(pendingAction)} onClick={() => runAction('save', item, onSave)} className={`reel-action ${item.saved ? 'is-active' : ''}`} aria-label="Save">{pendingAction === `save-${item._id}` ? '...' : '🔖'}</button><div className="reel-action__count">{item.savesCount ?? 0}</div></div>
+    <div className="reel-action-group"><button disabled={isCommentsLoading} onClick={() => openComments(item)} className="reel-action" aria-label="Comments">{isCommentsLoading ? '...' : '☵'}</button><div className="reel-action__count">{item.commentsCount ?? 0}</div></div>
+  </>
 
-            <div className="reel-overlay">
-              <div className="reel-overlay-gradient" aria-hidden="true" />
-              <div className="reel-actions">
-                <div className="reel-action-group">
-                  <button
-                    onClick={onLike ? () => onLike(item) : undefined}
-                    className="reel-action"
-                    aria-label="Like"
-                  >
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 22l7.8-8.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
-                    </svg>
-                  </button>
-                  <div className="reel-action__count">{item.likeCount ?? item.likesCount ?? item.likes ?? 0}</div>
-                </div>
-
-                <div className="reel-action-group">
-                  <button
-                    className="reel-action"
-                    onClick={onSave ? () => onSave(item) : undefined}
-                    aria-label="Bookmark"
-                  >
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" />
-                    </svg>
-                  </button>
-                  <div className="reel-action__count">{item.savesCount ?? item.bookmarks ?? item.saves ?? 0}</div>
-                </div>
-
-                <div className="reel-action-group">
-                  <button className="reel-action" aria-label="Comments">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
-                    </svg>
-                  </button>
-                  <div className="reel-action__count">{item.commentsCount ?? (Array.isArray(item.comments) ? item.comments.length : 0)}</div>
-                </div>
-              </div>
-
-              <div className="reel-content">
-                <p className="reel-description" title={item.description}>{item.description}</p>
-                {item.foodPartner && (
-                  <Link className="reel-btn" to={"/food-partner/" + item.foodPartner} aria-label="Visit store">Visit store</Link>
-                )}
-              </div>
-            </div>
-          </section>
-        ))}
+  return <div className="reels-page"><audio ref={audioRef} /><div className="reels-feed" role="list">
+    {items.length === 0 && <div className="empty-state"><p>{emptyMessage}</p></div>}
+    {items.map(item => <section key={item._id} className="reel" role="listitem">
+      <video ref={element => element ? videoRefs.current.set(item._id, element) : videoRefs.current.delete(item._id)} data-id={item._id} className="reel-video" src={item.video} muted={isMuted || Boolean(item.song?.url)} playsInline loop preload="metadata" />
+      <div className="reel-overlay"><div className="reel-overlay-gradient" aria-hidden="true" />
+        <div className="reel-actions reel-actions--inline">{renderActionButtons(item)}</div>
+        <div className="reel-content">{item.song?.title && <div className="reel-song" aria-label={`Song: ${item.song.title} by ${item.song.artist}`}><span aria-hidden="true">♪</span> {item.song.title} {item.song.artist ? `— ${item.song.artist}` : ''}</div>}<strong className="reel-title">{item.name}</strong><div className="reel-rating" aria-label={`${item.averageRating || 0} out of 5 stars from ${item.reviewCount || 0} reviews`}>★ {item.averageRating ? item.averageRating.toFixed(1) : '0.0'} <span>({item.reviewCount || 0})</span></div><p className="reel-description">{item.description}</p><div className="reel-links">{item.foodPartner?._id && <Link className="reel-btn" to={`/food-partner/${item.foodPartner._id}`}>Visit store</Link>}<Link className="reel-btn reel-btn-light" to={`/order/${item._id}`}>Order now</Link></div></div>
       </div>
-    </div>
-  )
+    </section>)}
+  </div>
+  {activeItem && <div className="reel-actions reel-actions--floating">{renderActionButtons(activeItem)}</div>}
+  {activeComments && <aside className="comments-panel">
+    <div className="comments-header"><h2>Comments</h2><button className="comments-close" onClick={() => setActiveComments(null)} aria-label="Close comments">×</button></div>
+    <div className="comments-list">{isCommentsLoading ? <p>Loading comments...</p> : commentsError ? <p className="error-text" role="alert">{commentsError}</p> : comments.length === 0 ? <p>There is no comment</p> : comments.map(comment => <div className="comment" key={comment._id}><strong>{comment.user?.fullName}</strong><span>{comment.text}</span></div>)}</div>
+    <form className="comments-form" onSubmit={addComment}><input disabled={pendingAction === 'comment'} value={commentText} onChange={event => setCommentText(event.target.value)} placeholder="Add a comment" /><button disabled={pendingAction === 'comment'} type="submit">{pendingAction === 'comment' ? 'Posting...' : 'Post'}</button></form>
+  </aside>}</div>
 }
-
 export default ReelFeed

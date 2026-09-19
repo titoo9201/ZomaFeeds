@@ -23,8 +23,28 @@ const foodPartnerSchema = new mongoose.Schema({
         unique: true
     },
     password: {
+        type: String
+        // Optional: accounts created via OTP have no password until they set one.
+    },
+    profilePicture: {
+        type: String
+    },
+    restaurantType: {
         type: String,
+        enum: ['Veg', 'Non-Veg', 'Both'],
         required: true
+    },
+    isOpen: {
+        type: Boolean,
+        default: true
+    },
+    openingTime: {
+        type: String,
+        default: '09:00'
+    },
+    closingTime: {
+        type: String,
+        default: '22:00'
     }
 })
 

@@ -1,34 +1,46 @@
-import React from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import '../styles/bottom-nav.css'
+import { getCartItem, CART_EVENT } from '../config/cart'
+
+const HomeIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5" /><path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10" /></svg>
+const ReelIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="m9 3 2 4m4-4 2 4M9 11l6 3-6 3z" /></svg>
+const SaveIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17l-6-3-6 3z" /></svg>
+const ProfileIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5" /><path d="M5 21a7 7 0 0 1 14 0" /></svg>
+const CartIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="20" r="1.3" /><circle cx="17" cy="20" r="1.3" /><path d="M3 4h2l2 11h10l2-8H6" /></svg>
+
+const baseItems = [
+  { to: '/home', label: 'Home', Icon: HomeIcon, end: true },
+  { to: '/reels', label: 'Reels', Icon: ReelIcon },
+  { to: '/saved', label: 'Saved', Icon: SaveIcon },
+  { to: '/user-profile', label: 'Profile', Icon: ProfileIcon },
+]
 
 const BottomNav = () => {
-  return (
-    <nav className="bottom-nav" role="navigation" aria-label="Bottom">
-      <div className="bottom-nav__inner">
-        <NavLink to="/" end className={({ isActive }) => `bottom-nav__item ${isActive ? 'is-active' : ''}`}>
-          <span className="bottom-nav__icon" aria-hidden="true">
-            {/* home ka icon */}
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 10.5 12 3l9 7.5"/>
-              <path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10"/>
-            </svg>
-          </span>
-          <span className="bottom-nav__label">Home</span>
-        </NavLink>
+  const [cartItem, setCartItem] = useState(getCartItem)
 
-        <NavLink to="/saved" className={({ isActive }) => `bottom-nav__item ${isActive ? 'is-active' : ''}`}>
-          <span className="bottom-nav__icon" aria-hidden="true">
-            {/* bookmark ka  icon */}
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/>
-            </svg>
-          </span>
-          <span className="bottom-nav__label">Saved</span>
+  useEffect(() => {
+    const sync = () => setCartItem(getCartItem())
+    window.addEventListener(CART_EVENT, sync)
+    window.addEventListener('storage', sync)
+    return () => { window.removeEventListener(CART_EVENT, sync); window.removeEventListener('storage', sync) }
+  }, [])
+
+  const items = cartItem
+    ? [...baseItems.slice(0, 3), { to: cartItem.orderId ? `/payment/${cartItem.orderId}` : `/order/${cartItem.foodId}`, label: 'Cart', Icon: CartIcon }, baseItems[3]]
+    : baseItems
+
+  return <nav className="bottom-nav" aria-label="Primary navigation">
+    <div className="bottom-nav__inner">
+      {items.map(item => {
+        const IconComponent = item.Icon
+        return <NavLink key={item.label} to={item.to} end={item.end} className={({ isActive }) => `bottom-nav__item ${isActive ? 'is-active' : ''}`}>
+          <span className="bottom-nav__icon"><IconComponent /></span>
+          <span className="bottom-nav__label">{item.label}</span>
         </NavLink>
-      </div>
-    </nav>
-  )
+      })}
+    </div>
+  </nav>
 }
 
 export default BottomNav

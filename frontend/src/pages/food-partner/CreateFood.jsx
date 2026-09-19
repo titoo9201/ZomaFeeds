@@ -1,15 +1,25 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import axios from 'axios';
+import api from '../../config/api';
 import '../../styles/create-food.css';
+import '../../styles/manage-food.css';
 import { useNavigate } from 'react-router-dom';
+import PageNav from '../../components/PageNav';
+import SongPicker from '../../components/SongPicker';
 
 const CreateFood = () => {
     const [ name, setName ] = useState('');
     const [ description, setDescription ] = useState('');
+    const [ category, setCategory ] = useState('');
+    const [ price, setPrice ] = useState(1);
+    const [ song, setSong ] = useState(null);
     const [ videoFile, setVideoFile ] = useState(null);
     const [ videoURL, setVideoURL ] = useState('');
     const [ fileError, setFileError ] = useState('');
+    const [ submitError, setSubmitError ] = useState('');
+    const [ isUploading, setIsUploading ] = useState(false);
+    const [ uploadProgress, setUploadProgress ] = useState(0);
     const fileInputRef = useRef(null);
+    const previewVideoRef = useRef(null);
 
     const navigate = useNavigate();
 
@@ -27,6 +37,7 @@ const CreateFood = () => {
         const file = e.target.files && e.target.files[ 0 ];
         if (!file) { setVideoFile(null); setFileError(''); return; }
         if (!file.type.startsWith('video/')) { setFileError('Please select a valid video file.'); return; }
+        if (file.size > 100 * 1024 * 1024) { setFileError('Video must be smaller than 100 MB.'); return; }
         setFileError('');
         setVideoFile(file);
     };
@@ -37,6 +48,7 @@ const CreateFood = () => {
         const file = e.dataTransfer?.files?.[ 0 ];
         if (!file) { return; }
         if (!file.type.startsWith('video/')) { setFileError('Please drop a valid video file.'); return; }
+        if (file.size > 100 * 1024 * 1024) { setFileError('Video must be smaller than 100 MB.'); return; }
         setFileError('');
         setVideoFile(file);
     };
@@ -47,6 +59,13 @@ const CreateFood = () => {
 
     const openFileDialog = () => fileInputRef.current?.click();
 
+    const togglePreviewPlayback = () => {
+        const video = previewVideoRef.current;
+        if (!video) return;
+        if (video.paused) video.play().catch(() => {});
+        else video.pause();
+    };
+
     const onSubmit = async (e) => {
         e.preventDefault();
 
@@ -54,21 +73,30 @@ const CreateFood = () => {
 
         formData.append('name', name);
         formData.append('description', description);
+        formData.append('category', category);
+        formData.append('price', price);
+        if (song) formData.append('song', JSON.stringify(song));
         formData.append("mama", videoFile);
 
-        const response = await axios.post("http://localhost:3000/api/food", formData, {
-            withCredentials: true,
-        })
-
-        console.log(response.data);
-        navigate("/profile"); // Redirect to home or another page after successful creation
+        try {
+            setSubmitError('');
+            setIsUploading(true);
+            setUploadProgress(0);
+            await api.post('/api/food', formData, { onUploadProgress: event => { if (event.total) setUploadProgress(Math.round((event.loaded * 100) / event.total)); } });
+            navigate('/dashboard');
+        } catch (requestError) {
+            setSubmitError(requestError.response?.data?.message || 'Upload failed. Please try again.');
+        } finally {
+            setIsUploading(false);
+        }
 
     };
 
-    const isDisabled = useMemo(() => !name.trim() || !videoFile, [ name, videoFile ]);
+    const isDisabled = useMemo(() => !name.trim() || !videoFile || !category, [ name, videoFile, category ]);
 
     return (
         <div className="create-food-page">
+            <PageNav homePath="/dashboard" />
             <div className="create-food-card">
                 <header className="create-food-header">
                     <h1 className="create-food-title">Create Food</h1>
@@ -127,7 +155,10 @@ const CreateFood = () => {
 
                     {videoURL && (
                         <div className="video-preview">
-                            <video className="video-preview-el" src={videoURL} controls playsInline preload="metadata" />
+                            <button className="video-preview-button" type="button" onClick={togglePreviewPlayback} aria-label="Play or pause video preview">
+                                <video ref={previewVideoRef} className="video-preview-el" src={videoURL} muted playsInline preload="metadata" />
+                                <span className="video-preview-hint" aria-hidden="true">Tap to play / pause</span>
+                            </button>
                         </div>
                     )}
 
@@ -154,9 +185,38 @@ const CreateFood = () => {
                         />
                     </div>
 
+                    <div className="field-group">
+                        <label htmlFor="foodPrice">Price (₹)</label>
+                        <input
+                            id="foodPrice"
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={price}
+                            onChange={(e) => setPrice(e.target.value)}
+                            required
+                        />
+                    </div>
+
+                    <div className="field-group">
+                        <label>Song (optional)</label>
+                        <SongPicker selectedSong={song} onSelect={setSong} onRemove={() => setSong(null)} />
+                    </div>
+
+                    <div className="field-group">
+                        <label htmlFor="foodCategory">Category</label>
+                        <select id="foodCategory" value={category} onChange={(e) => setCategory(e.target.value)} required>
+                            <option value="">Choose a category</option>
+                            <option>Starters</option><option>Main Course - Veg</option><option>Main Course - Non Veg</option>
+                            <option>Breads / Indian Breads</option><option>Rice & Biryani</option><option>Fast Food / Quick Bites</option>
+                            <option>Soups & Salads</option><option>Desserts / Sweets (Meetha)</option><option>Beverages / Drinks</option>
+                        </select>
+                    </div>
+
                     <div className="form-actions">
-                        <button className="btn-primary" type="submit" disabled={isDisabled}>
-                            Save Food
+                        {submitError && <p className="error-text" role="alert">{submitError}</p>}
+                        <button className="btn-primary" type="submit" disabled={isDisabled || isUploading}>
+                            {isUploading ? `Uploading ${uploadProgress}%...` : 'Save Food'}
                         </button>
                     </div>
                 </form>

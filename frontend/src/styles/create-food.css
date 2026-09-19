@@ -3,6 +3,11 @@
 /* Container */
 .create-food-page {
   min-height: 100dvh;
+  width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -12,8 +17,11 @@
               var(--color-bg);
 }
 
+.create-food-page::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
 .create-food-card {
   width: 100%;
+  min-width: 0;
   max-width: 720px; /* mobile-first but centered card */
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -30,12 +38,12 @@
 .create-food-subtitle { color: var(--color-text-secondary); font-size: .95rem; }
 
 /* Form */
-.create-food-form { display: grid; gap: var(--space-5); }
+.create-food-form { display: grid; gap: var(--space-5); min-width: 0; }
 @media (min-width: 960px) {
   .create-food-form { gap: var(--space-6); }
 }
 
-.field-group { display: grid; gap: 6px; }
+.field-group { display: grid; gap: 6px; min-width: 0; }
 .field-group label {
   font-size: .75rem;
   text-transform: uppercase;
@@ -47,7 +55,8 @@
 /* Inputs */
 .field-group input[type="text"],
 .field-group input[type="file"],
-.field-group textarea {
+.field-group textarea,
+.field-group select {
   appearance: none;
   border: 1px solid var(--color-border);
   background: var(--color-surface-alt);
@@ -103,13 +112,14 @@
   padding: 8px 12px;
   border-radius: var(--radius-sm);
   width: 100%;
+  min-width: 0;
   background: var(--color-surface-alt);
   border: 1px solid var(--color-border);
 }
 
-.file-chip-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.file-chip-size { font-size: .85rem; color: var(--color-text-secondary); margin-left: auto; }
-.file-chip-actions { display: inline-flex; align-items: center; gap: 8px; }
+.file-chip-name { min-width: 0; flex: 1 1 180px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-chip-size { flex: 0 0 auto; font-size: .85rem; color: var(--color-text-secondary); }
+.file-chip-actions { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 8px; flex-wrap: wrap; }
 
 .btn-ghost {
   background: transparent;
@@ -132,6 +142,7 @@
 /* Video preview */
 .video-preview {
   width: 100%;
+  max-width: 100%;
   border-radius: var(--radius-sm);
   overflow: hidden;
   border: 1px dashed var(--color-border);
@@ -141,9 +152,15 @@
   /* Prevent tall videos from stretching the card */
 }
 
+.video-preview-button { position: relative; display: block; width: 100%; padding: 0; overflow: hidden; border: 0; background: var(--color-surface-alt); cursor: pointer; }
+.video-preview-button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.video-preview-hint { position: absolute; right: 12px; bottom: 12px; padding: 6px 9px; border-radius: 999px; background: rgba(0, 0, 0, .58); color: #fff; font-size: .72rem; pointer-events: none; }
+
 .video-preview-el {
+  max-width: 100%;
+  max-height: 60vh;
   width: 100%;
-  height: 100%;
+  height: auto;
   display: block;
   background: #000;
   object-fit: contain;
@@ -153,8 +170,8 @@
 .form-actions { display: flex; gap: var(--space-3); }
 
 .btn-primary {
-  background: var(--color-accent);
-  color: #FFFFFF;
+  background: var(--button-bg);
+  color: var(--button-text);
   border: none;
   border-radius: var(--radius-sm);
   padding: 12px 16px;
@@ -166,7 +183,7 @@
   box-shadow: 0 2px 8px rgba(255,30,30,0.16);
 }
 
-.btn-primary:hover { background: var(--color-accent-hover); box-shadow: 0 4px 12px rgba(255,30,30,0.24); }
+.btn-primary:hover { filter: saturate(1.08) brightness(1.04); box-shadow: 0 4px 12px rgba(226,55,68,0.24); }
 .btn-primary:active { transform: translateY(1px); }
 .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
 
@@ -175,7 +192,19 @@
   .create-food-title { font-size: 1.6rem; }
 }
 
+@media (max-width: 600px) {
+  .create-food-page { width: 100%; max-width: 100%; padding: 64px 10px 16px; align-items: stretch; justify-content: flex-start; }
+  .create-food-card { width: 100%; max-width: none; margin: 0; padding: 18px 14px; border-radius: var(--radius-sm); }
+  .create-food-title { font-size: 1.3rem; }
+  .create-food-subtitle { max-width: 28ch; }
+  .file-dropzone { padding: 20px 12px; }
+  .file-chip { align-items: flex-start; }
+  .file-chip-name { flex-basis: 100%; }
+  .file-chip-size { margin-right: auto; }
+  .file-chip-actions { width: 100%; }
+}
+
 /* Smooth theme transitions */
 .create-food-card,
 .field-group input,
-.field-group textarea { transition: background 200ms ease, color 200ms ease, border-color 200ms ease; }
+.field-group textarea { transition: all .3s ease-in-out; }

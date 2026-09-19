@@ -1,43 +1,22 @@
-@import './theme.css';
-
 .bottom-nav {
+  transition: all .3s ease-in-out;
   position: fixed;
-  left: 0; right: 0; bottom: 0;
-  height: 56px;
-  background: rgba(40,40,40,0.92);
-  backdrop-filter: blur(2px);
-  color: #FFFFFF;
-  border: 1px solid rgba(255,30,30,0.08);
-  box-shadow: 0 -2px 12px rgba(255,30,30,0.06);
-  border-top: 1px solid rgba(255,30,30,0.06);
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 50;
+  min-height: 72px;
+  padding: 8px 12px max(8px, env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+  border-top: 1px solid var(--color-border);
+  box-shadow: 0 -8px 24px rgba(55, 40, 28, .08);
+  backdrop-filter: blur(14px);
 }
 
-.bottom-nav__inner {
-  max-width: 720px;
-  margin: 0 auto;
-  height: 100%;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-}
-
-.bottom-nav__item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-secondary);
-  text-decoration: none;
-  gap: 2px;
-}
-
-.bottom-nav__item.is-active { color: var(--color-accent); }
-
-.bottom-nav__icon { line-height: 0; }
-
-.bottom-nav__label { font-size: 12px; }
-
-/* Safe area for iOS */
-@supports(padding: max(0px)) {
-  .bottom-nav { padding-bottom: max(env(safe-area-inset-bottom), 0px); }
-}
+.bottom-nav__inner { display: flex; gap: 4px; max-width: 620px; height: 56px; margin: 0 auto; }
+.bottom-nav__item { display: flex; flex: 1 1 0; min-width: 0; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: var(--radius-sm); color: var(--color-text-secondary); text-decoration: none; font-size: .72rem; font-weight: 700; }
+.bottom-nav__item:hover { color: var(--color-accent); background: var(--color-surface-alt); }
+.bottom-nav__item.is-active { color: var(--button-text); background: var(--button-bg); }
+.bottom-nav__icon { display: grid; place-items: center; line-height: 0; }
+.bottom-nav__icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.bottom-nav__label { line-height: 1; white-space: nowrap; }

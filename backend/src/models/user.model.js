@@ -12,7 +12,11 @@ const userSchema = new mongoose.Schema({
         unique: true,
     },
     password: {
-        type: String,
+        type: String
+        // Optional: accounts created via OTP have no password until they set one.
+    },
+    profilePicture: {
+        type: String
     }
 },
     {

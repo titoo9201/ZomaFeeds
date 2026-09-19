@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "npx nodemon server.js"
   },
   "keywords": [],
   "author": "",
@@ -24,6 +25,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.20.4",
     "multer": "^2.0.2",
+    "nodemailer": "^10.0.10",
     "uuid": "^11.1.0"
   }
 }

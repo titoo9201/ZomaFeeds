@@ -70,6 +70,8 @@ form.auth-form { display: flex; flex-direction: column; gap: var(--space-4); }
   min-width: 0; /* allow shrinking inside flex parent */
 }
 
+.field-group select { width: 100%; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface-alt); color: var(--color-text); padding: 10px 12px; font: inherit; }
+
 .field-group input:focus-visible {
   border-color: var(--color-accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 55%, transparent);
@@ -81,8 +83,8 @@ form.auth-form { display: flex; flex-direction: column; gap: var(--space-4); }
 
 button.auth-submit {
   margin-top: var(--space-2);
-  background: var(--color-accent);
-  color: #FFFFFF;
+  background: var(--button-bg);
+  color: var(--button-text);
   border: none;
   padding: 12px 16px;
   font: inherit;
@@ -97,7 +99,7 @@ button.auth-submit {
   transition: background var(--transition-base), transform var(--transition-base), box-shadow var(--transition-base);
 }
 
-button.auth-submit:hover { background: var(--color-accent-hover); }
+button.auth-submit:hover { filter: saturate(1.08) brightness(1.04); }
 button.auth-submit:active { transform: translateY(1px); }
 button.auth-submit:focus-visible { outline: 2px solid var(--color-accent-hover); outline-offset: 2px; }
 
@@ -114,6 +116,16 @@ button.auth-submit:focus-visible { outline: 2px solid var(--color-accent-hover);
 /* Utility for spacing adjustments */
 .gap-sm { gap: var(--space-2); }
 
+/* Password vs OTP method toggle */
+.auth-method-toggle { display: flex; gap: 6px; margin-bottom: 6px; }
+.auth-method-toggle button { flex: 1; border: 1px solid var(--color-border); background: var(--color-surface-alt); color: var(--color-text-secondary); border-radius: 999px; padding: 7px 10px; font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer; }
+.auth-method-toggle button.is-active { border-color: transparent; background: var(--button-bg); color: var(--button-text); }
+
+.otp-row { display: flex; gap: 8px; }
+.otp-row input { flex: 1; min-width: 0; letter-spacing: 4px; text-align: center; }
+.otp-row button { flex: 0 0 auto; border: 1px solid var(--color-border); background: var(--color-surface-alt); color: var(--color-text); border-radius: var(--radius-sm); padding: 0 14px; font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.otp-row button:disabled { opacity: .6; cursor: not-allowed; }
+
 /* Responsive */
 @media (max-width: 480px) {
   .auth-card { padding: var(--space-5) var(--space-5) var(--space-4); }
@@ -121,4 +133,4 @@ button.auth-submit:focus-visible { outline: 2px solid var(--color-accent-hover);
 }
 
 /* Smooth transitions for theme change */
-body, .auth-card, .field-group input { transition: background 200ms ease, color 200ms ease, border-color 200ms ease; }
+body, .auth-card, .field-group input { transition: all .3s ease-in-out; }

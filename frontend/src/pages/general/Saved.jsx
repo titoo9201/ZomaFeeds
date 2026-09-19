@@ -1,42 +1,56 @@
 import React, { useEffect, useState } from 'react'
 import '../../styles/reels.css'
-import axios from 'axios'
+import api from '../../config/api'
 import ReelFeed from '../../components/ReelFeed'
+import PageNav from '../../components/PageNav'
+import LoadingState from '../../components/LoadingState'
 
 const Saved = () => {
     const [ videos, setVideos ] = useState([])
+    const [ error, setError ] = useState('')
+    const [ isLoading, setIsLoading ] = useState(true)
 
     useEffect(() => {
-        axios.get("http://localhost:3000/api/food/save", { withCredentials: true })
+        api.get('/api/food/save')
             .then(response => {
-                const savedFoods = response.data.savedFoods.map((item) => ({
-                    _id: item.food._id,
-                    video: item.food.video,
-                    description: item.food.description,
-                    likeCount: item.food.likeCount,
-                    savesCount: item.food.savesCount,
-                    commentsCount: item.food.commentsCount,
-                    foodPartner: item.food.foodPartner,
-                }))
-                setVideos(savedFoods)
+                setVideos(response.data.savedFoods)
             })
+            .catch(() => setError('Unable to load saved videos.'))
+            .finally(() => setIsLoading(false))
     }, [])
 
     const removeSaved = async (item) => {
         try {
-            await axios.post("http://localhost:3000/api/food/save", { foodId: item._id }, { withCredentials: true })
-            setVideos((prev) => prev.map((v) => v._id === item._id ? { ...v, savesCount: Math.max(0, (v.savesCount ?? 1) - 1) } : v))
+            await api.post('/api/food/save', { foodId: item._id })
+            setVideos((prev) => prev.filter((v) => v._id !== item._id))
         } catch {
             // noop
         }
     }
 
+    const likeSaved = async (item) => {
+        try {
+            const { data } = await api.post('/api/food/like', { foodId: item._id })
+            setVideos((previous) => previous.map((video) => video._id === item._id ? { ...video, liked: data.liked, likeCount: data.likeCount } : video))
+        } catch {
+            setError('Unable to update this like.')
+        }
+    }
+
+    const commentAdded = (item, count) => setVideos((previous) => previous.map((video) => video._id === item._id ? { ...video, commentsCount: count } : video))
+
     return (
-        <ReelFeed
+        <>
+        <PageNav homePath="/home" />
+        {error && <p className="error-text" role="alert">{error}</p>}
+        {isLoading ? <LoadingState label="Loading saved videos..." /> : <ReelFeed
             items={videos}
+            onLike={likeSaved}
             onSave={removeSaved}
+            onCommentAdded={commentAdded}
             emptyMessage="No saved videos yet."
-        />
+        />}
+        </>
     )
 }
 

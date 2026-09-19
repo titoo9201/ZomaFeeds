@@ -1,22 +1,34 @@
-/* CSS Theme Variables (Flaming Hot Red + Black – Edgy Food + Reels) */
 :root {
-  --color-bg: #121212; /* Pure Black - main reels background */
-  --color-surface: #282828; /* Dark Grey - panels/cards */
-  --color-surface-alt: #373737;
-  --color-border: #2f2f2f;
-  --color-text: #FFFFFF; /* White text/icons */
-  --color-text-secondary: #B8B8B8;
-  --color-accent: #FF1E1E; /* Hot Red - primary */
-  --color-accent-hover: #E01717; /* slightly darker hot red */
-  --color-danger: #FF1E1E;
-  --color-warm-accent: #FFB800; /* Warm Accent for badges/CTA */
-
-  --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 8px;
-
-  --font-stack: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-
+  color-scheme: light;
+  /* Palette pulled from the ZomaFeeds logo: warm coral-red-pink-purple mark on a cream ground */
+  --brand-primary: #E23744;
+  --brand-secondary: #C13584;
+  --brand-gradient: linear-gradient(135deg, #F56A4C, #E23744, #C13584, #833AB4);
+  --bg-main: #FFF8F5;
+  --bg-card: #FFFFFF;
+  --text-main: #201113;
+  --text-muted: #5E4548;
+  --border-color: #EBD5D2;
+  --button-bg: var(--brand-gradient);
+  --button-text: #FFFFFF;
+  --color-bg: var(--bg-main);
+  --color-bg-muted: #FBEAE6;
+  --color-surface: var(--bg-card);
+  --color-surface-alt: #FDF1EE;
+  --color-border: var(--border-color);
+  --color-text: var(--text-main);
+  --color-text-secondary: var(--text-muted);
+  --color-accent: var(--brand-primary);
+  --color-accent-hover: #C92E3A;
+  --color-danger: #B4232D;
+  --color-warm-accent: #D97732;
+  --color-reel-bg: #241417;
+  --color-reel-text: #FFF8F5;
+  --shadow-sm: 0 1px 3px rgba(140, 40, 45, .09);
+  --shadow-md: 0 14px 34px rgba(140, 40, 45, .14);
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 14px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -24,45 +36,57 @@
   --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
-
-  --shadow-sm: 0 1px 2px rgba(0,0,0,.06);
-  --shadow-md: 0 4px 12px -2px rgba(0,0,0,.08),0 2px 4px -2px rgba(0,0,0,.06);
-
-  --transition-base: 120ms cubic-bezier(.4,0,.2,1);
+  --font-stack: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --transition-base: 180ms ease;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg: #121212;
-    --color-surface: #282828;
-    --color-surface-alt: #373737;
-    --color-border: #2f2f2f;
-    --color-text: #FFFFFF;
-    --color-text-secondary: #B8B8B8;
-    --color-accent: #FF1E1E;
-    --color-accent-hover: #E01717;
-    --color-danger: #FF1E1E;
-    --color-warm-accent: #FFB800;
-    --shadow-sm: 0 1px 2px rgba(255,30,30,0.06);
-    --shadow-md: 0 4px 12px -2px rgba(255,30,30,0.08),0 2px 4px -2px rgba(255,30,30,0.06);
-  }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  /* Same warm brand hues, on a soft charcoal-maroon ground instead of flat/harsh black-gray */
+  --brand-primary: #FF5A66;
+  --brand-secondary: #E0559C;
+  --brand-gradient: linear-gradient(135deg, #FF8A5C, #FF5A66, #E0559C, #9B4FC9);
+  --bg-main: #1B1215;
+  --bg-card: #241A1D;
+  --text-main: #F5E8E6;
+  --text-muted: #B79399;
+  --border-color: #3A2A2D;
+  --button-bg: var(--brand-gradient);
+  --button-text: #FFFFFF;
+  --color-bg: var(--bg-main);
+  --color-bg-muted: #221718;
+  --color-surface: var(--bg-card);
+  --color-surface-alt: #2C2023;
+  --color-border: var(--border-color);
+  --color-text: var(--text-main);
+  --color-text-secondary: var(--text-muted);
+  --color-accent: var(--brand-primary);
+  --color-accent-hover: #FF7C86;
+  --color-danger: #F0838A;
+  --color-warm-accent: #F0975E;
+  --color-reel-bg: #150F11;
+  --color-reel-text: #F5E8E6;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, .3);
+  --shadow-md: 0 16px 38px rgba(0, 0, 0, .38);
 }
 
-/* Base element theming (can be imported once globally) */
+* { box-sizing: border-box; }
+html, body, #root { min-height: 100%; width: 100%; max-width: 100%; overflow-x: hidden; }
+html, body, #root { scrollbar-width: none; -ms-overflow-style: none; }
+html::-webkit-scrollbar, body::-webkit-scrollbar, #root::-webkit-scrollbar { width: 0; height: 0; display: none; }
 body {
-  font-family: var(--font-stack);
+  margin: 0;
   background: var(--color-bg);
   color: var(--color-text);
+  font-family: var(--font-stack);
   -webkit-font-smoothing: antialiased;
-  line-height: 1.4;
+  line-height: 1.45;
+  transition: all .3s ease-in-out;
 }
-
-a {
-  color: var(--color-accent);
-  text-decoration: none;
-  transition: color var(--transition-base);
-}
-
+a { color: var(--color-accent); text-decoration: none; }
 a:hover, a:focus-visible { color: var(--color-accent-hover); }
+::selection { background: var(--color-accent); color: var(--color-reel-text); }
 
-::selection { background: var(--color-accent); color: #FFFFFF; }
+/* Shared utilities used across pages */
+.eyebrow { color: var(--color-accent); text-transform: uppercase; font-size: .72rem; font-weight: 800; letter-spacing: .14em; }
+button:disabled { cursor: wait; opacity: .65; }

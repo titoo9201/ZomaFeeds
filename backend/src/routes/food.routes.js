@@ -39,6 +39,10 @@ router.get('/save',
     foodController.getSaveFood
 )
 
+router.patch('/:id', authMiddleware.authFoodPartnerMiddleware, foodController.updateFood)
+
+router.delete('/:id', authMiddleware.authFoodPartnerMiddleware, foodController.deleteFood)
+
 
 
 module.exports = router
