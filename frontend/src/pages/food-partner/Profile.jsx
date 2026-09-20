@@ -83,7 +83,7 @@ const Profile = () => {
       if (Number.isFinite(addressFields.lat) && Number.isFinite(addressFields.lng)) {
         formData.append('lat', addressFields.lat)
         formData.append('lng', addressFields.lng)
-        if (addressFields.landmark?.trim()) formData.append('landmark', addressFields.landmark.trim())
+        if (addressFields.address?.trim()) formData.append('address', addressFields.address.trim())
       }
       if (editPicture) formData.append('profilePicture', editPicture)
       const { data } = await api.patch('/api/food-partner/me', formData)

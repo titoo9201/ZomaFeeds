@@ -39,20 +39,20 @@ const RiderOrderScreen = ({ order, riderPos, mode, onConfirm, isConfirming }) =>
         {isPick
           ? <>
             <span className="flow-order-id">Order ID<strong>{String(order._id).slice(-10).toUpperCase()}</strong></span>
-            <Collapsible title={`Order details — ${order.food?.foodPartner?.name || 'Restaurant'}`} defaultOpen>
+            <div>
+              <h3 className="flow-contact-name">{order.food?.foodPartner?.name || 'Restaurant'}</h3>
+              <p className="flow-contact-address"><strong>Pickup address:</strong> {order.food?.foodPartner?.address}</p>
+            </div>
+            <div className="flow-contact-actions">
+              {order.food?.foodPartner?.phone ? <a href={`tel:${order.food.foodPartner.phone}`}>📞 Call</a> : <span />}
+              {pickupMapsUrl && <a className="is-primary" href={pickupMapsUrl} target="_blank" rel="noopener noreferrer">🧭 Navigate to Restaurant</a>}
+            </div>
+            <Collapsible title="Order details" defaultOpen>
               <span>{order.quantity} × {order.food?.name}</span>
-            </Collapsible>
-            <Collapsible title="Restaurant details">
-              <span>{order.food?.foodPartner?.name}</span>
-              <span>{order.food?.foodPartner?.address}</span>
-              <div className="flow-contact-actions">
-                {order.food?.foodPartner?.phone && <a href={`tel:${order.food.foodPartner.phone}`}>📞 {order.food.foodPartner.phone}</a>}
-                {pickupMapsUrl && <a className="is-primary" href={pickupMapsUrl} target="_blank" rel="noopener noreferrer">🧭 Navigate to Restaurant</a>}
-              </div>
             </Collapsible>
             <Collapsible title="Customer details">
               <span>{order.user?.fullName || 'Customer'}</span>
-              <span>{order.address}</span>
+              <p><strong>Delivery address:</strong> {order.address}</p>
             </Collapsible>
           </>
           : <>
@@ -61,7 +61,7 @@ const RiderOrderScreen = ({ order, riderPos, mode, onConfirm, isConfirming }) =>
             </span>
             <div>
               <h3 className="flow-contact-name">{order.user?.fullName || 'Customer'}</h3>
-              <p className="flow-contact-address">{order.address}</p>
+              <p className="flow-contact-address"><strong>Delivery address:</strong> {order.address}</p>
             </div>
             <div className="flow-contact-actions">
               {order.user?.phone ? <a href={`tel:${order.user.phone}`}>📞 Call</a> : <span />}

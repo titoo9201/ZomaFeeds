@@ -104,15 +104,6 @@ async function reverseGeocode(lat, lng) {
     }
 }
 
-// Turns a reverseGeocode() result into a short human-readable label for display only
-// (never used for distance/range logic — that always works off stored lat/lng directly).
-function formatDisplayAddress(reverseGeocoded) {
-    if (!reverseGeocoded) return null;
-    const { street, city, state } = reverseGeocoded;
-    const label = [street, city, state].map(part => part?.trim()).filter(Boolean).join(', ');
-    return label || null;
-}
-
 // Generous bounding box covering all Indian territory (including Andaman & Nicobar, J&K,
 // Arunachal Pradesh) — used to sanity-check coordinates pulled from a pasted Maps link.
 function isWithinIndia(lat, lng) {
@@ -159,15 +150,32 @@ function extractPlaceAddressFromUrl(urlString) {
     }
 }
 
+// A "dropped pin"/"your location" share encodes the same slot as raw "<lat>,<lng>" text
+// (e.g. .../maps/place/28.676880,77.489412/data=...) — that's not a readable address, just
+// the coordinates again, so callers that want a genuine address to display should discard it.
+const COORDS_AS_TEXT_PATTERN = /^-?\d{1,3}\.\d+,\s*-?\d{1,3}\.\d+$/;
+
+function extractReadablePlaceAddress(urlString) {
+    const raw = extractPlaceAddressFromUrl(urlString);
+    if (!raw || COORDS_AS_TEXT_PATTERN.test(raw)) return null;
+    return raw;
+}
+
 // Short links (maps.app.goo.gl/..., goo.gl/maps/...) carry no coordinates in the URL itself —
 // they redirect to the real long-form URL, so we follow the redirect chain server-side first.
+// Returns { lat, lng, placeAddress } — placeAddress is the readable address Google itself put
+// in the URL (only present for "place" links, e.g. a shared business), so callers can use it
+// as the display address instead of a fresh (and often lower-quality) reverse-geocode.
 async function parseMapsLink(rawUrl) {
     let url;
     try { url = new URL(rawUrl.trim()); } catch { return null; }
     if (!/(^|\.)google\.[a-z.]+$|(^|\.)goo\.gl$/.test(url.hostname)) return null;
 
     const direct = extractLatLngFromUrl(url.href);
-    if (direct) return isWithinIndia(direct.lat, direct.lng) ? direct : null;
+    if (direct) {
+        if (!isWithinIndia(direct.lat, direct.lng)) return null;
+        return { ...direct, placeAddress: extractReadablePlaceAddress(url.href) };
+    }
 
     // No coordinates in the short link itself — resolve it to its final long-form URL.
     try {
@@ -178,16 +186,17 @@ async function parseMapsLink(rawUrl) {
             validateStatus: status => status < 400
         });
         const resolvedUrl = response.request?.res?.responseUrl || url.href;
+        const placeAddress = extractReadablePlaceAddress(resolvedUrl);
 
         let resolved = extractLatLngFromUrl(resolvedUrl) || extractLatLngFromUrl(String(response.data).slice(0, 20000));
         if (!resolved) {
             // No coordinates anywhere — this is likely a "place" link (named business/POI)
             // whose only location info is a readable address in the URL path. Geocode that.
-            const placeAddress = extractPlaceAddressFromUrl(resolvedUrl);
-            if (placeAddress) resolved = await geocodeWithFallback(placeAddress);
+            const fallbackAddress = placeAddress || extractPlaceAddressFromUrl(resolvedUrl);
+            if (fallbackAddress) resolved = await geocodeWithFallback(fallbackAddress);
         }
-        if (!resolved) return null;
-        return isWithinIndia(resolved.lat, resolved.lng) ? resolved : null;
+        if (!resolved || !isWithinIndia(resolved.lat, resolved.lng)) return null;
+        return { ...resolved, placeAddress };
     } catch (error) {
         console.error('[map.service] parseMapsLink failed to resolve short link:', error.message);
         return null;
@@ -209,5 +218,5 @@ function distanceMeters(a, b) {
 
 module.exports = {
     geocode, geocodeWithFallback, reverseGeocode, getRoute, getPartnersWithinServiceRadius, distanceMeters,
-    ARRIVAL_THRESHOLD_METERS, formatDisplayAddress, isWithinIndia, parseMapsLink
+    ARRIVAL_THRESHOLD_METERS, isWithinIndia, parseMapsLink
 };

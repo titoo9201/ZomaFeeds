@@ -3,9 +3,12 @@ import api from '../config/api'
 import PinConfirmMap from './PinConfirmMap'
 import '../styles/address-fields.css'
 
-// Location capture is GPS-or-Maps-link only — no free-text address, so there's nothing to
-// geocode. Both methods just produce a starting {lat, lng} guess; PinConfirmMap is the single
-// choke point where the user actually confirms (or drags to fix) the exact point that gets saved.
+// Location capture is GPS-or-Maps-link only — no free-text address is ever geocoded. Both
+// methods just produce a starting {lat, lng} guess; PinConfirmMap is the single choke point
+// where the user actually confirms (or drags to fix) the exact point that gets saved. The
+// address text field is separate and purely cosmetic: pre-filled from Google's own text when a
+// Maps link resolves to one, but always freely editable — whatever it holds at save time is
+// trusted as-is, never re-geocoded.
 const AddressFields = ({ value, onChange, idPrefix = 'addr' }) => {
   const [isLocating, setIsLocating] = useState(false)
   const [gpsError, setGpsError] = useState('')
@@ -35,7 +38,10 @@ const AddressFields = ({ value, onChange, idPrefix = 'addr' }) => {
     setIsParsingLink(true)
     try {
       const { data } = await api.post('/api/geo/parse-maps-link', { url: mapsLink.trim() })
-      onChange({ ...value, lat: data.location.lat, lng: data.location.lng })
+      // A shared-business link carries Google's own readable address — pre-fill the editable
+      // address field with it. Doesn't clobber existing text when the link has no address of
+      // its own (e.g. a dropped-pin/"your location" link only carries coordinates).
+      onChange({ ...value, lat: data.location.lat, lng: data.location.lng, address: data.placeAddress || value.address })
       setShowLinkInput(false)
       setMapsLink('')
     } catch (requestError) {
@@ -73,14 +79,14 @@ const AddressFields = ({ value, onChange, idPrefix = 'addr' }) => {
     </div>}
 
     <div className="field-group">
-      <label htmlFor={`${idPrefix}-landmark`}>Landmark / notes (optional)</label>
+      <label htmlFor={`${idPrefix}-address`}>Address (optional)</label>
       <input
-        id={`${idPrefix}-landmark`}
-        value={value.landmark}
-        onChange={event => onChange({ ...value, landmark: event.target.value })}
-        placeholder="e.g. Near Shivalik Hospital"
+        id={`${idPrefix}-address`}
+        value={value.address}
+        onChange={event => onChange({ ...value, address: event.target.value })}
+        placeholder="e.g. Flat 201, ABC Apartments, Near Shivalik Hospital"
       />
-      <p className="small-note">Shown to the rider/restaurant for reference — not used to find your location.</p>
+      <p className="small-note">Auto-filled from Google Maps when available — edit freely to add your flat/shop number. Shown to the rider/restaurant; not used to find your location, which always comes from the pin above.</p>
     </div>
 
     {hasPin

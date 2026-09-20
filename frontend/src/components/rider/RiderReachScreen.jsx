@@ -52,7 +52,7 @@ const RiderReachScreen = ({ order, riderPos: riderFix, mode, onReached }) => {
         {eta != null && <span className="flow-eta-badge">🕒 {eta} min away</span>}
         <div>
           <h3 className="flow-contact-name">{contactName}</h3>
-          <p className="flow-contact-address">{contactAddress}</p>
+          <p className="flow-contact-address"><strong>{isPickup ? 'Pickup address' : 'Delivery address'}:</strong> {contactAddress}</p>
         </div>
         <div className="flow-contact-actions">
           {contactPhone ? <a href={`tel:${contactPhone}`}>📞 Call</a> : <span />}

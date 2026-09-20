@@ -41,7 +41,7 @@ const FoodPartnerRegister = () => {
     if (otp) formData.append('otp', otp);
     formData.append('lat', addressFields.lat);
     formData.append('lng', addressFields.lng);
-    if (addressFields.landmark?.trim()) formData.append('landmark', addressFields.landmark.trim());
+    if (addressFields.address?.trim()) formData.append('address', addressFields.address.trim());
     formData.append('restaurantType', restaurantType);
     if (profilePicture) formData.append('profilePicture', profilePicture);
 

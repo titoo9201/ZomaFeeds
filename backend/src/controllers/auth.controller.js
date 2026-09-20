@@ -6,7 +6,6 @@ const jwt = require('jsonwebtoken');
 const storageService = require('../services/storage.service');
 const mailService = require('../services/mail.service');
 const otpService = require('../services/otp.service');
-const mapService = require('../services/map.service');
 const { v4: uuid } = require('uuid');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
@@ -150,7 +149,7 @@ function logoutUser(req, res) {
 
 async function registerFoodPartner(req, res) {
     try {
-        const { name, email, password, otp, phone, landmark, contactName, restaurantType, lat, lng } = req.body;
+        const { name, email, password, otp, phone, address: addressText, contactName, restaurantType, lat, lng } = req.body;
 
         if (!EMAIL_REGEX.test(email || '')) return res.status(400).json({ message: 'Please enter a valid email address' });
         if (!password && !otp) return res.status(400).json({ message: 'Provide a password or an OTP to register' });
@@ -175,10 +174,11 @@ async function registerFoodPartner(req, res) {
         }
 
         const profilePicture = req.file ? (await storageService.uploadFile(req.file.buffer, `profile-${uuid()}`)).url : undefined;
-        // No free-text address anymore — location comes from GPS or a pasted Maps link,
-        // confirmed on PinConfirmMap. The landmark note (or a reverse-geocoded label as a
-        // fallback) becomes the display "address" — cosmetic only, never re-geocoded.
-        const address = landmark?.trim() || mapService.formatDisplayAddress(await mapService.reverseGeocode(Number(lat), Number(lng))) || `Pinned location (${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)})`;
+        // No free-text address to geocode — location comes from GPS or a pasted Maps link,
+        // confirmed on PinConfirmMap. The address text is a single editable field on the
+        // frontend (pre-filled from a Maps link's own address when available) — whatever's
+        // submitted is trusted and saved as-is, cosmetic only, never used for distance/range.
+        const address = addressText?.trim() || `Pinned location (${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)})`;
         const foodPartner = await foodPartnerModel.create({
             name,
             email,

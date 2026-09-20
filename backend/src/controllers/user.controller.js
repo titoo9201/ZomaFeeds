@@ -37,21 +37,22 @@ async function getSavedAddresses(req, res) {
 }
 
 // A saved address's whole purpose is its location, set via GPS or a pasted Maps link and
-// confirmed on PinConfirmMap — there's no free text to fall back to geocoding anymore.
-// The optional landmark note becomes the display label; otherwise we reverse-geocode the
-// confirmed point purely for a readable label (cosmetic — never re-used for distance/range).
-async function buildDisplayAddress(landmark, lat, lng) {
-    if (landmark?.trim()) return landmark.trim();
-    const label = mapService.formatDisplayAddress(await mapService.reverseGeocode(lat, lng));
-    return label || `Pinned location (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+// confirmed on PinConfirmMap — there's no free text to fall back to geocoding anymore. The
+// address text is a single editable field on the frontend (pre-filled from a Maps link's own
+// address when available, but freely editable — e.g. to add a flat/shop number) — whatever the
+// user ultimately submits is trusted and saved as-is, with a plain coordinate string as the only
+// fallback if they leave it empty (cosmetic only, never re-used for distance/range).
+function resolveDisplayAddress(address, lat, lng) {
+    if (address?.trim()) return address.trim();
+    return `Pinned location (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
 }
 
 async function addSavedAddress(req, res) {
     try {
-        const { label, customLabel, landmark, lat, lng } = req.body;
+        const { label, customLabel, address: addressText, lat, lng } = req.body;
         if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) return res.status(400).json({ message: 'A location is required — use GPS or paste a Google Maps link' });
         const resolvedLabel = ADDRESS_LABELS.includes(label) ? label : 'Home';
-        const address = await buildDisplayAddress(landmark, Number(lat), Number(lng));
+        const address = resolveDisplayAddress(addressText, Number(lat), Number(lng));
 
         const user = await userModel.findById(req.user._id);
         user.savedAddresses.push({
@@ -71,10 +72,10 @@ async function addSavedAddress(req, res) {
 
 async function updateSavedAddress(req, res) {
     try {
-        const { label, customLabel, landmark, lat, lng } = req.body;
+        const { label, customLabel, address: addressText, lat, lng } = req.body;
         if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) return res.status(400).json({ message: 'A location is required — use GPS or paste a Google Maps link' });
         const resolvedLabel = ADDRESS_LABELS.includes(label) ? label : 'Home';
-        const address = await buildDisplayAddress(landmark, Number(lat), Number(lng));
+        const address = resolveDisplayAddress(addressText, Number(lat), Number(lng));
 
         const user = await userModel.findById(req.user._id);
         const saved = user.savedAddresses.id(req.params.id);

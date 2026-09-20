@@ -89,10 +89,10 @@ const LocationPrompt = ({ onLocationSet, onSkip }) => {
       if (saveMode === 'existing') {
         const target = savedAddresses.find(item => item._id === overwriteId)
         await api.patch(`/api/user/addresses/${overwriteId}`, {
-          label: target.label, customLabel: target.customLabel, lat, lng, landmark: newLocation.landmark
+          label: target.label, customLabel: target.customLabel, lat, lng, address: newLocation.address
         })
       } else {
-        await api.post('/api/user/addresses', { label: newLabel, customLabel: newCustomLabel, lat, lng, landmark: newLocation.landmark })
+        await api.post('/api/user/addresses', { label: newLabel, customLabel: newCustomLabel, lat, lng, address: newLocation.address })
       }
       onLocationSet(confirmedUser)
     } catch (requestError) {

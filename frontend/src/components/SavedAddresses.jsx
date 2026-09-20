@@ -26,7 +26,7 @@ const SavedAddresses = ({ selectable = false, onSelect, showDelete = false }) =>
     setEditingId(item._id)
     setLabel(item.label)
     setCustomLabel(item.customLabel || '')
-    setAddressFields({ lat: item.lat ?? null, lng: item.lng ?? null, landmark: item.address || '' })
+    setAddressFields({ lat: item.lat ?? null, lng: item.lng ?? null, address: item.address || '' })
     setError('')
     setIsAdding(true)
   }

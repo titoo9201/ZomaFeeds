@@ -14,9 +14,12 @@ async function reverseGeocode(req, res) {
 async function parseMapsLink(req, res) {
     const url = req.body.url;
     if (!url?.trim()) return res.status(400).json({ message: 'A Google Maps link is required' });
-    const location = await mapService.parseMapsLink(url);
-    if (!location) return res.status(400).json({ message: "Could not read a location from that link. Make sure it's a Google Maps link with a pinned point, or use GPS instead." });
-    res.json({ location });
+    const result = await mapService.parseMapsLink(url);
+    if (!result) return res.status(400).json({ message: "Could not read a location from that link. Make sure it's a Google Maps link with a pinned point, or use GPS instead." });
+    // placeAddress is only present for a shared-business "place" link (Google put a real
+    // readable address in the URL) — the frontend uses it to pre-fill the editable address
+    // field instead of leaving it blank or falling back to a plain coordinate string.
+    res.json({ location: { lat: result.lat, lng: result.lng }, placeAddress: result.placeAddress || null });
 }
 
 module.exports = { reverseGeocode, parseMapsLink };

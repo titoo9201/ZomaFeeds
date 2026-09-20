@@ -68,7 +68,7 @@ Everything — auth, media storage, email, real-time location, routing, geocodin
 | 📍 | **Radius-aware Home feed** — restaurants are only shown if you're within a flat 15km of your saved location (`$geoNear`), sorted by rating; set it by picking one of your saved addresses from a dropdown, or by confirming a brand new GPS/Maps-link pin (which can then optionally be added to your address book too, under an existing or new label) — the same address system used at checkout, not a separate one-off flow |
 | ❤️💬🔖 | **Like, save & comment** on any reel, with live counts, comment avatars, an Instagram-style comment sheet (video shrinks to a corner while comments take over), and long-press-to-delete your own comment |
 | ⭐ | **Dish + restaurant ratings** — every reel shows its own average rating, and checkout shows both the dish's rating and the restaurant's overall rating |
-| 🏠💌 | **Labelled address book** — save multiple delivery addresses (Home, Girlfriend, Boyfriend, Friend, Relative, Other), each set from your live GPS location *or* a pasted Google Maps link, confirmed on a draggable-pin map (Street/Satellite toggle) before it's saved — no address text to mistype or mis-geocode |
+| 🏠💌 | **Labelled address book** — save multiple delivery addresses (Home, Girlfriend, Boyfriend, Friend, Relative, Other), each set from your live GPS location *or* a pasted Google Maps link, confirmed on a draggable-pin map (Street/Satellite toggle) before it's saved. Pasting a link to a named place pre-fills a plain, freely-editable address text box (e.g. to add your flat/shop number) — that text is never geocoded, only shown to the restaurant/rider; the actual location always comes from the confirmed pin |
 | 🛒 | **Single-page Zomato-style checkout** — item + quantity stepper, an address-picker sheet and a payment-method sheet both surfaced from a sticky bottom bar, with a live bill preview *before* you place the order |
 | 🧾 | **Full itemised bill** — item total → restaurant GST (5%) → packaging charge (if the restaurant charges one) → distance-based delivery fee → platform fee → GST on fees (18%) → grand total. See [Bill breakdown](#-bill-breakdown) |
 | 💳 | **Dummy payment flow** — pay by UPI, Card, or Cash on Delivery (no real money ever moves); a COD order isn't marked "delivered" until you confirm in-app that you handed over the cash |
@@ -106,6 +106,7 @@ Everything — auth, media storage, email, real-time location, routing, geocodin
 |---|---|
 | 🌙🌗 | **Rapido/Zomato-style delivery flow** — one full-screen step at a time instead of a list: **New order!** (dark theme, circular map, trip/pickup/drop distance breakdown, Accept/Deny) → **Reach pickup** (live map, call the restaurant, Navigate) → **Pick order** (order ID, item breakdown, collapsible restaurant/customer details) → **Reach drop** (live map, call the customer) → **Drop order** (payment-status badge, "Order delivered") |
 | 🧭 | **"Navigate" hands off to Google Maps** — a one-tap deep link (`google.com/maps/dir/?api=1&destination=…&travelmode=driving`) opens turn-by-turn driving directions in the Google Maps app (or a new tab on desktop), using the phone's own live GPS as the starting point; the in-app Leaflet map stays alongside it purely as an overview, not a replacement |
+| 📝 | **Readable pickup/delivery addresses right next to the Navigate button** — GPS gets a rider to the building, but not the exact door; the restaurant's and customer's own text address (flat/shop number, landmark) is shown prominently on every step, not buried in a collapsed section |
 | 🛰️ | **Real GPS tracking** — `navigator.geolocation.watchPosition`, throttled to the server every 15s (plus an immediate first fix), broadcast live over Socket.IO to the customer's tracking screen |
 | 🧭 | **Direction-aware marker** — the bike icon computes its bearing from the last GPS fix (`atan2`) and rotates to face the way the rider is actually moving, while the marker itself glides smoothly (`requestAnimationFrame` tween) instead of snapping between fixes |
 | 🔒 | **Proximity-gated actions** — "Delivered" only unlocks once the rider's live location is within ~200m of the drop point; for Cash on Delivery, it stays locked until the *customer* confirms the cash handover from their own tracking screen |
@@ -120,7 +121,7 @@ Everything — auth, media storage, email, real-time location, routing, geocodin
 - **HTTP-only JWT cookies** for auth, checked against MongoDB on every protected request; Socket.IO connections are authenticated by reading the same cookie off the handshake.
 - **Password *and* OTP are first-class** on register and login, for all three roles — bcrypt-hashed either way.
 - **Atomic, race-safe delivery claiming** — `acceptDelivery` is a single `findOneAndUpdate` guarded by `rider: null`, so two riders tapping "Accept" on the same order at the same instant can never both win it.
-- **GPS/Google-Maps-link only, not free-text geocoding** — restaurant locations, saved delivery addresses, and every order's pickup/drop point all come from the phone's own GPS or a pasted Google Maps link (`POST /api/geo/parse-maps-link` extracts `{lat, lng}` from the URL, following short-link redirects server-side), each confirmed on a draggable-pin map before it's saved. Geocoding a typed address by text turned out to be unreliable for small Indian localities (two real addresses in the same "Ganga Puram" locality once resolved ~17km apart), so order creation never geocodes anything — it always reads the already-stored, human-confirmed coordinates on both ends. The old Nominatim address→coordinates geocoder still exists in `map.service.js` purely as a fallback for the Home-feed "enter address manually" box.
+- **GPS/Google-Maps-link only, not free-text geocoding** — restaurant locations, saved delivery addresses, and every order's pickup/drop point all come from the phone's own GPS or a pasted Google Maps link (`POST /api/geo/parse-maps-link` extracts `{lat, lng}` from the URL, following short-link redirects server-side), each confirmed on a draggable-pin map before it's saved. Geocoding a typed address by text turned out to be unreliable for small Indian localities (two real addresses in the same "Ganga Puram" locality once resolved ~17km apart), so order creation never geocodes anything — it always reads the already-stored, human-confirmed coordinates on both ends. The old Nominatim address→coordinates geocoder still exists in `map.service.js` purely as a fallback for the Home-feed "enter address manually" box. The saved *display* address (shown to the restaurant/rider, e.g. "Flat 402, Sunrise Apartments...") is a single freely-editable text field — pre-filled with Google's own address when a place link is pasted, but whatever the user submits is trusted and stored as-is, with a plain coordinate string as the only fallback if left empty; it's never geocoded and never affects distance/pricing.
 - **Server is the only source of truth for money** — every rupee of a bill (item total, restaurant GST, packaging charge, delivery fee, platform fee, GST on fees) is computed in `pricing.service.js` at order-creation time; the client only ever *previews* a bill via `/api/orders/quote`.
 - **`validateModifiedOnly` Mongoose pattern** on every partial update, so a legacy document missing a newer required field never blocks an unrelated edit.
 - **Every endpoint is try/catch-wrapped**, returning a real JSON error message instead of letting Express's default HTML error page mask what actually failed.
@@ -265,7 +266,7 @@ erDiagram
     }
     SAVEDADDRESS {
         string label "Home / Girlfriend / Boyfriend / Friend / Relative / Other"
-        string address "landmark note, or an auto reverse-geocoded label"
+        string address "editable text, pre-filled from a Maps link when available"
         number lat
         number lng
     }
@@ -387,11 +388,12 @@ Every location on the platform — a restaurant's own address, a customer's save
 flowchart TD
     Start(["Set a location"]) --> Method{"GPS or Maps link?"}
     Method -->|"Use my current location"| GPS["navigator.geolocation<br/>→ {lat, lng} directly"]
-    Method -->|"Paste Google Maps link"| Link["POST /api/geo/parse-maps-link<br/>follows short-link redirects,<br/>extracts {lat, lng} from the URL"]
+    Method -->|"Paste Google Maps link"| Link["POST /api/geo/parse-maps-link<br/>follows short-link redirects,<br/>extracts {lat, lng} + placeAddress from the URL"]
     GPS --> Pin["PinConfirmMap<br/>(Street/Satellite toggle, draggable pin)"]
     Link --> Pin
-    Pin -->|"user drags to the exact spot"| Confirmed["Confirmed {lat, lng} saved"]
-    Confirmed --> Label["Server reverse-geocodes once,<br/>purely to show a readable label —<br/>never re-used for distance"]
+    Link -.->|"placeAddress, if the link was to a named place"| AddrField["Editable address text field<br/>(pre-filled, but freely editable —<br/>e.g. to add a flat/shop number)"]
+    Pin -->|"user drags to the exact spot"| Confirmed["Confirmed {lat, lng} + address text saved as-is<br/>(a plain coordinate string only if left empty)"]
+    AddrField --> Confirmed
 ```
 
 ### Delivery pricing — from confirmed pins to a rejected-or-accepted order
@@ -664,11 +666,11 @@ All protected routes read a JWT from an `httpOnly` cookie set at login. `user`, 
 |---|---|---|---|
 | PATCH | `/api/user/location` | user | Set your home-feed location — a saved address's stored `{lat, lng}`, a fresh GPS/Maps-link confirmed pin, or (legacy fallback) an address to geocode |
 | GET | `/api/user/addresses` | user | List saved, labelled delivery addresses |
-| POST | `/api/user/addresses` | user | Save a new labelled address — requires a confirmed `{lat, lng}` (GPS or Maps link), no free-text address accepted |
-| PATCH | `/api/user/addresses/:id` | user | Update a saved address's label/landmark/location |
+| POST | `/api/user/addresses` | user | Save a new labelled address — requires a confirmed `{lat, lng}` (GPS or Maps link); the address text itself is a freely-editable field, trusted as submitted |
+| PATCH | `/api/user/addresses/:id` | user | Update a saved address's label/address text/location |
 | DELETE | `/api/user/addresses/:id` | user | Remove a saved address |
 | GET | `/api/geo/reverse` | — | Reverse-geocode `lat`/`lng` into a readable address, for display only (public — used on pre-signup forms too) |
-| POST | `/api/geo/parse-maps-link` | — | Extract `{lat, lng}` from a pasted Google Maps link — follows short-link (`maps.app.goo.gl`) redirects server-side, validates the result falls within India |
+| POST | `/api/geo/parse-maps-link` | — | Extract `{lat, lng}` from a pasted Google Maps link — follows short-link (`maps.app.goo.gl`) redirects server-side, validates the result falls within India; also returns `placeAddress`, Google's own readable address text, when the link is to a named place (pre-fills the editable address field on the frontend) |
 
 </details>
 

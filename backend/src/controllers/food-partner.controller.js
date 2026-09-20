@@ -148,7 +148,7 @@ async function updateHours(req, res) {
 
 async function updateProfile(req, res) {
     try {
-        const { name, contactName, phone, landmark, restaurantType, email, packagingCharge, lat, lng } = req.body;
+        const { name, contactName, phone, address: addressText, restaurantType, email, packagingCharge, lat, lng } = req.body;
         const partner = await foodPartnerModel.findById(req.foodPartner._id);
         if (!partner) return res.status(404).json({ message: 'Food partner account not found' });
 
@@ -164,10 +164,12 @@ async function updateProfile(req, res) {
         // Location is now GPS/Maps-link only (confirmed via PinConfirmMap) — no free-text
         // address to geocode. Only touches location when the caller actually re-confirmed a
         // pin this time; editing unrelated fields (phone, hours, etc.) doesn't force a re-pin.
+        // The address text is a single editable field on the frontend (pre-filled from a Maps
+        // link's own address when available) — whatever's submitted is trusted and saved as-is.
         const hasPin = Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
         if (hasPin) {
             partner.location = { type: 'Point', coordinates: [Number(lng), Number(lat)] };
-            partner.address = landmark?.trim() || mapService.formatDisplayAddress(await mapService.reverseGeocode(Number(lat), Number(lng))) || `Pinned location (${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)})`;
+            partner.address = addressText?.trim() || `Pinned location (${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)})`;
         }
         if (restaurantType) partner.restaurantType = restaurantType;
         if (packagingCharge !== undefined) {
