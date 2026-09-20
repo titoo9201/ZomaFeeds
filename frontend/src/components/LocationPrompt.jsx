@@ -25,8 +25,13 @@ const LocationPrompt = ({ onLocationSet, onSkip }) => {
           setIsSubmitting(false)
         }
       },
-      () => { setError('Location permission denied.'); setMode('manual') },
-      { enableHighAccuracy: true, timeout: 10000 }
+      geoError => {
+        if (geoError.code === geoError.PERMISSION_DENIED) setError('Location permission denied. Please allow location access, or enter your address manually.')
+        else if (geoError.code === geoError.POSITION_UNAVAILABLE) setError('Could not detect your location. Please check that Location/GPS is turned on for this device, or enter your address manually.')
+        else setError('Location request timed out. Please enter your address manually.')
+        setMode('manual')
+      },
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
     )
   }
 

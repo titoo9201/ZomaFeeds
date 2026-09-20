@@ -24,8 +24,9 @@ const AddressFields = ({ value, onChange, idPrefix = 'addr', required = true }) 
     }, geoError => {
       setIsLocating(false)
       if (geoError.code === geoError.PERMISSION_DENIED) setError('Location permission denied. Please allow location access, or fill the address in manually.')
-      else setError('Could not get your location. Please fill the address in manually.')
-    }, { enableHighAccuracy: true, timeout: 10000 })
+      else if (geoError.code === geoError.POSITION_UNAVAILABLE) setError('Could not detect your location. Please check that Location/GPS is turned on for this device, or fill the address in manually.')
+      else setError('Location request timed out. Please fill the address in manually.')
+    }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 })
   }
 
   return <div className="address-fields">
