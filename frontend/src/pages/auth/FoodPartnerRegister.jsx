@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import AuthCredentialField from '../../components/AuthCredentialField';
 import AuthClose from '../../components/AuthClose';
 import AddressFields from '../../components/AddressFields';
-import { EMPTY_ADDRESS, formatAddress } from '../../config/address';
+import { EMPTY_ADDRESS } from '../../config/address';
 
 const FoodPartnerRegister = () => {
 
@@ -24,9 +24,13 @@ const FoodPartnerRegister = () => {
     const phone = e.target.phone.value;
     const password = e.target.password?.value;
     const otp = e.target.otp?.value;
-    const address = formatAddress(addressFields);
     const restaurantType = e.target.restaurantType.value;
     const profilePicture = e.target.profilePicture.files[0];
+
+    if (!Number.isFinite(addressFields.lat) || !Number.isFinite(addressFields.lng)) {
+      setError('Use GPS or paste a Google Maps link to set your restaurant location.');
+      return;
+    }
 
     const formData = new FormData();
     formData.append('name', businessName);
@@ -35,7 +39,9 @@ const FoodPartnerRegister = () => {
     formData.append('email', email);
     if (password) formData.append('password', password);
     if (otp) formData.append('otp', otp);
-    formData.append('address', address);
+    formData.append('lat', addressFields.lat);
+    formData.append('lng', addressFields.lng);
+    if (addressFields.landmark?.trim()) formData.append('landmark', addressFields.landmark.trim());
     formData.append('restaurantType', restaurantType);
     if (profilePicture) formData.append('profilePicture', profilePicture);
 
@@ -83,9 +89,9 @@ const FoodPartnerRegister = () => {
             </div>
           <AuthCredentialField role="foodPartner" purpose="register" email={email} />
           <div className="field-group">
-            <label>Address</label>
+            <label>Location</label>
             <AddressFields value={addressFields} onChange={setAddressFields} idPrefix="reg-address" />
-            <p className="small-note">An exact address helps customers find you faster and keeps delivery tracking accurate.</p>
+            <p className="small-note">An exact location helps customers find you faster and keeps delivery tracking accurate.</p>
           </div>
           <div className="field-group">
             <label htmlFor="restaurantType">Restaurant type</label>

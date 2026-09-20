@@ -1,0 +1,12 @@
+@import './theme.css';
+
+.pin-confirm-map-wrap { display: grid; gap: 6px; margin-top: 8px; }
+.pin-confirm-map { width: 100%; height: 260px; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--color-border); z-index: 0; }
+
+.pin-confirm-layer-toggle { display: inline-flex; gap: 4px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 999px; padding: 3px; width: fit-content; }
+.pin-confirm-layer-toggle button { border: 0; background: transparent; border-radius: 999px; padding: 5px 14px; font: inherit; font-size: .8rem; font-weight: 600; color: var(--color-text-secondary); cursor: pointer; }
+.pin-confirm-layer-toggle button.is-active { background: var(--color-accent); color: #fff; }
+
+.pin-confirm-marker-wrap { background: transparent; border: none; }
+.pin-confirm-marker { display: block; font-size: 32px; line-height: 1; cursor: grab; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .4)); }
+.pin-confirm-marker:active { cursor: grabbing; }

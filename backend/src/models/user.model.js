@@ -33,7 +33,11 @@ const userSchema = new mongoose.Schema({
         city: { type: String, trim: true },
         state: { type: String, trim: true },
         pincode: { type: String, trim: true },
-        address: { type: String, trim: true, required: true }
+        address: { type: String, trim: true, required: true },
+        // Set only when the user drags the confirm-location pin — lets order-time delivery
+        // pricing skip re-geocoding this address and use the exact confirmed spot instead.
+        lat: { type: Number },
+        lng: { type: Number }
     }]
 },
     {

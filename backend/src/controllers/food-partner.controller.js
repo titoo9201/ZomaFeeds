@@ -148,7 +148,7 @@ async function updateHours(req, res) {
 
 async function updateProfile(req, res) {
     try {
-        const { name, contactName, phone, address, restaurantType, email, packagingCharge } = req.body;
+        const { name, contactName, phone, landmark, restaurantType, email, packagingCharge, lat, lng } = req.body;
         const partner = await foodPartnerModel.findById(req.foodPartner._id);
         if (!partner) return res.status(404).json({ message: 'Food partner account not found' });
 
@@ -161,10 +161,13 @@ async function updateProfile(req, res) {
         if (name?.trim()) partner.name = name.trim();
         if (contactName?.trim()) partner.contactName = contactName.trim();
         if (phone?.trim()) partner.phone = phone.trim();
-        if (address?.trim() && address.trim() !== partner.address) {
-            partner.address = address.trim();
-            const geocoded = await mapService.geocodeWithFallback(partner.address);
-            if (geocoded) partner.location = { type: 'Point', coordinates: [geocoded.lng, geocoded.lat] };
+        // Location is now GPS/Maps-link only (confirmed via PinConfirmMap) — no free-text
+        // address to geocode. Only touches location when the caller actually re-confirmed a
+        // pin this time; editing unrelated fields (phone, hours, etc.) doesn't force a re-pin.
+        const hasPin = Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
+        if (hasPin) {
+            partner.location = { type: 'Point', coordinates: [Number(lng), Number(lat)] };
+            partner.address = landmark?.trim() || mapService.formatDisplayAddress(await mapService.reverseGeocode(Number(lat), Number(lng))) || `Pinned location (${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)})`;
         }
         if (restaurantType) partner.restaurantType = restaurantType;
         if (packagingCharge !== undefined) {

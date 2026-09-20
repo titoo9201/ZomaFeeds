@@ -36,21 +36,30 @@ async function getSavedAddresses(req, res) {
     res.json({ addresses: user.savedAddresses });
 }
 
+// A saved address's whole purpose is its location, set via GPS or a pasted Maps link and
+// confirmed on PinConfirmMap — there's no free text to fall back to geocoding anymore.
+// The optional landmark note becomes the display label; otherwise we reverse-geocode the
+// confirmed point purely for a readable label (cosmetic — never re-used for distance/range).
+async function buildDisplayAddress(landmark, lat, lng) {
+    if (landmark?.trim()) return landmark.trim();
+    const label = mapService.formatDisplayAddress(await mapService.reverseGeocode(lat, lng));
+    return label || `Pinned location (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+}
+
 async function addSavedAddress(req, res) {
     try {
-        const { label, customLabel, houseNo, street, city, state, pincode } = req.body;
-        // houseNo is exempt from the hard requirement — reverse-geocoded GPS fixes very often
-        // can't resolve a house/building number, and the rest is still enough to deliver to.
-        if (!street?.trim() || !city?.trim() || !state?.trim() || !pincode?.trim()) return res.status(400).json({ message: 'Street, city, state and pincode are required' });
+        const { label, customLabel, landmark, lat, lng } = req.body;
+        if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) return res.status(400).json({ message: 'A location is required — use GPS or paste a Google Maps link' });
         const resolvedLabel = ADDRESS_LABELS.includes(label) ? label : 'Home';
-        const address = [houseNo, street, city, state, pincode].map(part => part?.trim()).filter(Boolean).join(', ');
+        const address = await buildDisplayAddress(landmark, Number(lat), Number(lng));
 
         const user = await userModel.findById(req.user._id);
         user.savedAddresses.push({
             label: resolvedLabel,
             customLabel: resolvedLabel === 'Other' ? customLabel?.trim() : undefined,
-            houseNo: houseNo?.trim() || '', street: street.trim(), city: city.trim(), state: state.trim(), pincode: pincode.trim(),
-            address
+            address,
+            lat: Number(lat),
+            lng: Number(lng)
         });
         await user.save();
         res.status(201).json({ addresses: user.savedAddresses });
@@ -62,10 +71,10 @@ async function addSavedAddress(req, res) {
 
 async function updateSavedAddress(req, res) {
     try {
-        const { label, customLabel, houseNo, street, city, state, pincode } = req.body;
-        if (!street?.trim() || !city?.trim() || !state?.trim() || !pincode?.trim()) return res.status(400).json({ message: 'Street, city, state and pincode are required' });
+        const { label, customLabel, landmark, lat, lng } = req.body;
+        if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) return res.status(400).json({ message: 'A location is required — use GPS or paste a Google Maps link' });
         const resolvedLabel = ADDRESS_LABELS.includes(label) ? label : 'Home';
-        const address = [houseNo, street, city, state, pincode].map(part => part?.trim()).filter(Boolean).join(', ');
+        const address = await buildDisplayAddress(landmark, Number(lat), Number(lng));
 
         const user = await userModel.findById(req.user._id);
         const saved = user.savedAddresses.id(req.params.id);
@@ -73,12 +82,9 @@ async function updateSavedAddress(req, res) {
 
         saved.label = resolvedLabel;
         saved.customLabel = resolvedLabel === 'Other' ? customLabel?.trim() : undefined;
-        saved.houseNo = houseNo?.trim() || '';
-        saved.street = street.trim();
-        saved.city = city.trim();
-        saved.state = state.trim();
-        saved.pincode = pincode.trim();
         saved.address = address;
+        saved.lat = Number(lat);
+        saved.lng = Number(lng);
 
         await user.save();
         res.json({ addresses: user.savedAddresses });

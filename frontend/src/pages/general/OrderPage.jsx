@@ -38,7 +38,7 @@ const OrderPage = () => {
     let cancelled = false
     setIsQuoting(true)
     setQuoteError('')
-    api.post('/api/orders/quote', { food: foodId, quantity: 1, address: selectedAddress.address }).then(({ data }) => {
+    api.post('/api/orders/quote', { food: foodId, quantity: 1, address: selectedAddress.address, lat: selectedAddress.lat, lng: selectedAddress.lng }).then(({ data }) => {
       if (cancelled) return
       setDeliveryQuote({ deliveryFee: data.bill.deliveryFee, distanceKm: data.bill.distanceKm, packagingCharge: data.bill.packagingCharge || 0 })
     }).catch(error => {
@@ -69,7 +69,7 @@ const OrderPage = () => {
       setMessage('')
       let currentOrderId = orderId
       if (!currentOrderId) {
-        const { data } = await api.post('/api/orders', { food: foodId, quantity, address: selectedAddress.address })
+        const { data } = await api.post('/api/orders', { food: foodId, quantity, address: selectedAddress.address, lat: selectedAddress.lat, lng: selectedAddress.lng })
         currentOrderId = data.order._id
         setOrderId(currentOrderId)
       }

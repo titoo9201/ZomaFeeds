@@ -65,10 +65,10 @@ Everything — auth, media storage, email, real-time location, routing, geocodin
 | | |
 |---|---|
 | 🎬 | **Reels-first discovery** — a vertical, swipeable feed of food videos *or photos* (IntersectionObserver-driven autoplay), instead of a boring list of restaurants |
-| 📍 | **Radius-aware Home feed** — restaurants are only shown if you're within a flat 15km of your saved location (`$geoNear`), sorted by rating |
+| 📍 | **Radius-aware Home feed** — restaurants are only shown if you're within a flat 15km of your saved location (`$geoNear`), sorted by rating; set it by picking one of your saved addresses from a dropdown, or by confirming a brand new GPS/Maps-link pin (which can then optionally be added to your address book too, under an existing or new label) — the same address system used at checkout, not a separate one-off flow |
 | ❤️💬🔖 | **Like, save & comment** on any reel, with live counts, comment avatars, an Instagram-style comment sheet (video shrinks to a corner while comments take over), and long-press-to-delete your own comment |
 | ⭐ | **Dish + restaurant ratings** — every reel shows its own average rating, and checkout shows both the dish's rating and the restaurant's overall rating |
-| 🏠💌 | **Labelled address book** — save multiple delivery addresses (Home, Girlfriend, Boyfriend, Friend, Relative, Other), each auto-fillable from your live GPS location (reverse-geocoded into house no. / street / city / state / pincode) |
+| 🏠💌 | **Labelled address book** — save multiple delivery addresses (Home, Girlfriend, Boyfriend, Friend, Relative, Other), each set from your live GPS location *or* a pasted Google Maps link, confirmed on a draggable-pin map (Street/Satellite toggle) before it's saved — no address text to mistype or mis-geocode |
 | 🛒 | **Single-page Zomato-style checkout** — item + quantity stepper, an address-picker sheet and a payment-method sheet both surfaced from a sticky bottom bar, with a live bill preview *before* you place the order |
 | 🧾 | **Full itemised bill** — item total → restaurant GST (5%) → packaging charge (if the restaurant charges one) → distance-based delivery fee → platform fee → GST on fees (18%) → grand total. See [Bill breakdown](#-bill-breakdown) |
 | 💳 | **Dummy payment flow** — pay by UPI, Card, or Cash on Delivery (no real money ever moves); a COD order isn't marked "delivered" until you confirm in-app that you handed over the cash |
@@ -88,7 +88,7 @@ Everything — auth, media storage, email, real-time location, routing, geocodin
 | 📊 | **Dashboard-first login** — lands straight on a dashboard, not a bare menu list |
 | 🟢 | **Open/Closed switch** — flip your restaurant's status any time, independent of your configured hours |
 | 🕘 | **Order buckets** — Today / Yesterday / Past, each with orders-served and revenue stats (your real 75%+ share of the item price, not the customer's full bill) |
-| ✅❌ | **Accept / Reject workflow** — accepting moves the order into your kitchen queue and geocodes both your address and the customer's for delivery pricing; rejecting requires a reason and auto-refunds a paid order |
+| ✅❌ | **Accept / Reject workflow** — accepting moves the order into your kitchen queue (delivery pricing is already settled at order time, straight off your and the customer's confirmed map pins — no geocoding involved); rejecting requires a reason and auto-refunds a paid order |
 | 🚚🛵 | **See exactly who's delivering** — once a rider claims the order, the dashboard shows their name and live status ("heading here for pickup" → "out for delivery with …") instead of a dead-end "advance" button |
 | 📦💰 | **Optional packaging charge** — a flat per-order fee you control, shown as its own line item on every customer bill |
 | 📍 | **Flat 15km delivery range** — a platform-wide cap, the same for every restaurant; customers outside it never see you in their feed, and orders from out-of-range addresses are politely rejected at checkout |
@@ -97,14 +97,15 @@ Everything — auth, media storage, email, real-time location, routing, geocodin
 | 🎵 | **Instagram-style song trimming** — search a track, drag a waveform window to pick where it starts, tap the circular timer to set the clip length (5–30s, capped to the video's own length), then preview before attaching |
 | ⭐💬 | **Per-item and restaurant-wide ratings**, plus a read-only view of every comment and like count on your own reels |
 | 🔄 | **Live-updating dashboard** — incoming orders refresh automatically every few seconds; no manual reload to see a new one land |
-| 🏪 | **Editable business profile** — name, contact, phone, address (with GPS auto-fill), restaurant type, packaging charge, photo |
+| 🏪 | **Editable business profile** — name, contact, phone, location (GPS or a pasted Google Maps link, confirmed on a draggable-pin map), restaurant type, packaging charge, photo |
 | 📧 | **Branded automatic emails** — a welcome email on signup, then an itemised order-bill email, out-for-delivery, and delivered emails as the order moves through its lifecycle |
 
 ### 🛵 For delivery riders
 
 | | |
 |---|---|
-| 🌙🌗 | **Rapido/Zomato-style delivery flow** — one full-screen step at a time instead of a list: **New order!** (dark theme, circular map, trip/pickup/drop distance breakdown, Accept/Deny) → **Reach pickup** (live map, call the restaurant, "Go to map") → **Pick order** (order ID, item breakdown, collapsible restaurant/customer details) → **Reach drop** (live map, call the customer) → **Drop order** (payment-status badge, "Order delivered") |
+| 🌙🌗 | **Rapido/Zomato-style delivery flow** — one full-screen step at a time instead of a list: **New order!** (dark theme, circular map, trip/pickup/drop distance breakdown, Accept/Deny) → **Reach pickup** (live map, call the restaurant, Navigate) → **Pick order** (order ID, item breakdown, collapsible restaurant/customer details) → **Reach drop** (live map, call the customer) → **Drop order** (payment-status badge, "Order delivered") |
+| 🧭 | **"Navigate" hands off to Google Maps** — a one-tap deep link (`google.com/maps/dir/?api=1&destination=…&travelmode=driving`) opens turn-by-turn driving directions in the Google Maps app (or a new tab on desktop), using the phone's own live GPS as the starting point; the in-app Leaflet map stays alongside it purely as an overview, not a replacement |
 | 🛰️ | **Real GPS tracking** — `navigator.geolocation.watchPosition`, throttled to the server every 15s (plus an immediate first fix), broadcast live over Socket.IO to the customer's tracking screen |
 | 🧭 | **Direction-aware marker** — the bike icon computes its bearing from the last GPS fix (`atan2`) and rotates to face the way the rider is actually moving, while the marker itself glides smoothly (`requestAnimationFrame` tween) instead of snapping between fixes |
 | 🔒 | **Proximity-gated actions** — "Delivered" only unlocks once the rider's live location is within ~200m of the drop point; for Cash on Delivery, it stays locked until the *customer* confirms the cash handover from their own tracking screen |
@@ -119,7 +120,7 @@ Everything — auth, media storage, email, real-time location, routing, geocodin
 - **HTTP-only JWT cookies** for auth, checked against MongoDB on every protected request; Socket.IO connections are authenticated by reading the same cookie off the handshake.
 - **Password *and* OTP are first-class** on register and login, for all three roles — bcrypt-hashed either way.
 - **Atomic, race-safe delivery claiming** — `acceptDelivery` is a single `findOneAndUpdate` guarded by `rider: null`, so two riders tapping "Accept" on the same order at the same instant can never both win it.
-- **Geocoding with a graceful fallback chain** — Nominatim often can't resolve a house number or society name but *can* resolve the city/state/pincode; addresses are retried with progressively coarser (less specific) segments before falling back to a standard delivery fee rather than rejecting the order outright.
+- **GPS/Google-Maps-link only, not free-text geocoding** — restaurant locations, saved delivery addresses, and every order's pickup/drop point all come from the phone's own GPS or a pasted Google Maps link (`POST /api/geo/parse-maps-link` extracts `{lat, lng}` from the URL, following short-link redirects server-side), each confirmed on a draggable-pin map before it's saved. Geocoding a typed address by text turned out to be unreliable for small Indian localities (two real addresses in the same "Ganga Puram" locality once resolved ~17km apart), so order creation never geocodes anything — it always reads the already-stored, human-confirmed coordinates on both ends. The old Nominatim address→coordinates geocoder still exists in `map.service.js` purely as a fallback for the Home-feed "enter address manually" box.
 - **Server is the only source of truth for money** — every rupee of a bill (item total, restaurant GST, packaging charge, delivery fee, platform fee, GST on fees) is computed in `pricing.service.js` at order-creation time; the client only ever *previews* a bill via `/api/orders/quote`.
 - **`validateModifiedOnly` Mongoose pattern** on every partial update, so a legacy document missing a newer required field never blocks an unrelated edit.
 - **Every endpoint is try/catch-wrapped**, returning a real JSON error message instead of letting Express's default HTML error page mask what actually failed.
@@ -135,7 +136,7 @@ Everything — auth, media storage, email, real-time location, routing, geocodin
 | **Backend** | Node.js, Express 5, Socket.IO 4 |
 | **Database** | MongoDB, Mongoose 8 (ODM) |
 | **Real-time** | Socket.IO — JWT-cookie-authenticated connections, per-order (`order_<id>`) and per-role (`riders_lobby`) rooms |
-| **Maps & routing** | Leaflet + OpenStreetMap tiles (client), Nominatim geocoding + OSRM turn-by-turn routing (server, both free/public) |
+| **Maps & routing** | Leaflet + OpenStreetMap tiles, Esri World Imagery satellite (client); OSRM turn-by-turn routing + Nominatim (legacy fallback only) geocoding (server, all free/public); Google Maps deep links for rider turn-by-turn navigation (no API key — plain URLs) |
 | **Auth** | JWT (`httpOnly` cookies), `bcryptjs` for password + OTP hashing |
 | **File uploads** | Multer (in-memory) → ImageKit (video/image CDN) |
 | **Email** | Brevo transactional email API (HTTPS, not SMTP — avoids the outbound SMTP port blocks free hosts like Render impose) |
@@ -172,7 +173,7 @@ flowchart TD
         OrderC["Order controller<br/>(quote · lifecycle · route)"]
         RiderC["Rider controller"]
         UserC["User controller<br/>(location · addresses)"]
-        GeoC["Geo controller<br/>(reverse geocode)"]
+        GeoC["Geo controller<br/>(reverse geocode · parse Maps link)"]
         ReviewC["Review & comment controllers"]
         SongC["Song search controller"]
         NotifC["Notification controller"]
@@ -184,7 +185,7 @@ flowchart TD
 
     subgraph Services["🧮 Backend services"]
         Pricing["pricing.service<br/>(GST · platform fee · delivery slabs)"]
-        MapSvc["map.service<br/>(geocode w/ fallback · route · distance)"]
+        MapSvc["map.service<br/>(Maps-link parsing · route/ETA · legacy geocode fallback)"]
         Mail["mail.service<br/>(Brevo)"]
         Storage["storage.service<br/>(ImageKit)"]
     end
@@ -264,7 +265,9 @@ erDiagram
     }
     SAVEDADDRESS {
         string label "Home / Girlfriend / Boyfriend / Friend / Relative / Other"
-        string address
+        string address "landmark note, or an auto reverse-geocoded label"
+        number lat
+        number lng
     }
     FOODPARTNER {
         string name
@@ -376,23 +379,35 @@ sequenceDiagram
     API-->>P: dashboard shows delivered
 ```
 
-### Delivery pricing — from address to a rejected-or-accepted order
+### Location capture — GPS or a Google Maps link, confirmed on a map
+
+Every location on the platform — a restaurant's own address, a customer's saved delivery address, or the Home-feed location used for the 15km radius feed — is captured the same way, with no free-text address ever geocoded. The Home-feed picker (`LocationPrompt`) reuses this exact flow: pick an existing saved address instantly, or confirm a new pin and optionally save it into the address book under an existing or new label:
 
 ```mermaid
 flowchart TD
-    Address["Customer address"] --> Quote["POST /api/orders/quote<br/>(live bill preview)"]
-    Quote --> Geo1["geocodeWithFallback(address)"]
-    Geo1 -->|resolved| Geo2
-    Geo1 -->|still unresolved after<br/>progressively coarser retries| Default["Use a standard<br/>delivery fee — never block the order"]
-    RestAddr["Restaurant address"] --> Geo2["geocodeWithFallback(restaurant)"]
-    Geo2 --> Route["OSRM route → distance in km"]
+    Start(["Set a location"]) --> Method{"GPS or Maps link?"}
+    Method -->|"Use my current location"| GPS["navigator.geolocation<br/>→ {lat, lng} directly"]
+    Method -->|"Paste Google Maps link"| Link["POST /api/geo/parse-maps-link<br/>follows short-link redirects,<br/>extracts {lat, lng} from the URL"]
+    GPS --> Pin["PinConfirmMap<br/>(Street/Satellite toggle, draggable pin)"]
+    Link --> Pin
+    Pin -->|"user drags to the exact spot"| Confirmed["Confirmed {lat, lng} saved"]
+    Confirmed --> Label["Server reverse-geocodes once,<br/>purely to show a readable label —<br/>never re-used for distance"]
+```
+
+### Delivery pricing — from confirmed pins to a rejected-or-accepted order
+
+```mermaid
+flowchart TD
+    Pickup["FoodPartner.location<br/>(confirmed at registration/profile-update)"] --> Route["OSRM route → distance in km"]
+    Drop["Selected saved address's {lat, lng}<br/>(confirmed at save time)"] --> Route
     Route --> Slab{"Distance vs.<br/>flat 15km cap"}
     Slab -->|"0–3km"| Fee20["₹20"]
     Slab -->|"3–7km"| Fee30["₹30"]
     Slab -->|"7–15km"| Fee40["₹40"]
     Slab -->|"beyond 15km"| Reject["409 — outside delivery range"]
+    Slab -->|"OSRM itself failed<br/>(not an address problem)"| Default["Use a standard<br/>delivery fee — never block the order"]
     Fee20 & Fee30 & Fee40 & Default --> Bill["itemsTotal + restaurantGST<br/>+ packagingCharge + deliveryFee<br/>+ platformFee + serviceGST"]
-    Bill --> PlaceOrder["POST /api/orders<br/>(recomputed server-side, never trusts the client)"]
+    Bill --> PlaceOrder["POST /api/orders<br/>(recomputed server-side, never trusts the client —<br/>and never geocodes anything)"]
 ```
 
 ### Dual auth: password or OTP (all three roles)
@@ -446,7 +461,7 @@ ZomaFeeds/
 │       ├── models/                # mongoose schemas (user, foodpartner, rider, food, order, review, comment, ...)
 │       ├── routes/                # express routers, wired to controllers + middleware
 │       ├── middlewares/           # authUserMiddleware / authFoodPartnerMiddleware / authRiderMiddleware / authAnyMiddleware
-│       └── services/              # storage (ImageKit), mail (Brevo), otp, map (geocode/route), pricing
+│       └── services/              # storage (ImageKit), mail (Brevo), otp, map (Maps-link parsing/route/legacy geocode), pricing
 │
 └── frontend/
     └── src/
@@ -460,8 +475,8 @@ ZomaFeeds/
         ├── components/
         │   ├── rider/              # NewOrderCard, RiderReachScreen, RiderOrderScreen
         │   ├── ReelFeed, SongPicker, PageNav, BottomNav, RiderBottomNav, OrderConfirmModal
-        │   ├── AddressFields, SavedAddresses, AddressPickerSheet, PaymentMethodSheet
-        │   └── RiderTrackingMap, OrderRouteMap, MapRecenter
+        │   ├── AddressFields (GPS/Maps-link capture), SavedAddresses, AddressPickerSheet, PaymentMethodSheet, LocationPrompt
+        │   └── RiderTrackingMap, OrderRouteMap, PinConfirmMap, MapRecenter
         ├── hooks/
         │   └── useSmoothMarker.js  # bearing + requestAnimationFrame tween for the live rider marker
         ├── config/                 # axios instance, socket client, cart/address/pricing/geo helpers, map icons
@@ -479,7 +494,7 @@ ZomaFeeds/
 - An **ImageKit** account (for video/image storage)
 - A **Brevo** account with a verified sender email and an API key (for transactional email)
 - A reachable **JioSaavn API** instance (public or self-hosted) for song search
-- No API key needed for maps — geocoding (Nominatim) and routing (OSRM) use free public OpenStreetMap infrastructure
+- No API key needed for maps — routing (OSRM), map tiles (OpenStreetMap + Esri satellite), and Google Maps navigation deep links are all free/public with no signup
 
 ### Clone
 
@@ -536,7 +551,7 @@ Create a `.env` file inside `backend/` — **it is git-ignored and must never be
 
 > Email is sent over Brevo's HTTPS API rather than raw SMTP — free hosts like Render block outbound SMTP ports, which silently breaks Nodemailer/Gmail in production. If `MAIL_USER` / `BREVO_API_KEY` are left unset, the mail service no-ops with a console warning instead of crashing — everything else keeps working.
 >
-> Maps (Nominatim geocoding + OSRM routing) are free public APIs with no key required — no environment variable needed for them.
+> Maps (OSRM routing, OpenStreetMap/Esri tiles, Nominatim's legacy geocoding fallback, Google Maps navigation links) are all free public services with no key required — no environment variable needed for any of them.
 
 ---
 
@@ -547,7 +562,7 @@ A few things learned the hard way while deploying to Render — worth knowing wh
 - **SPA routing needs an explicit rewrite rule.** A static host has no idea `/user/login` or `/rider/dashboard` are client-side routes — refreshing or deep-linking to one 404s unless every path falls back to `index.html`. `frontend/public/_redirects` (`/* /index.html 200`) covers Netlify-style hosts automatically; on Render specifically, also add the same rule under the site's **Redirects/Rewrites** dashboard tab (Source `/*` → Destination `/index.html` → Action `Rewrite`), since the file isn't always picked up on its own.
 - **`.env` never reaches the host.** It's git-ignored on purpose, so every variable in [Environment variables](#-environment-variables) has to be added by hand in the host's dashboard (e.g. Render → your service → **Environment**) — forgetting one fails silently or throws a generic 500 instead of a clear error.
 - **Free-tier services sleep.** Render (and similar free tiers) spin a service down after ~15 minutes of inactivity; the next request 502s while it cold-starts back up. Point a free uptime monitor (UptimeRobot, cron-job.org, …) at `GET /` for both the backend and the JioSaavn API instance, on a 5-minute interval, to keep them warm — this matters even more now that riders depend on a live socket connection.
-- **A restaurant/customer address must be geocodable to place or accept an order.** If a restaurant's saved address is a placeholder/test string, delivery pricing can't be computed for it. The fallback chain retries with progressively coarser fragments of the address before giving up, but a completely fictitious address will still fail — use "Use my current location" or a real address to fix it.
+- **A restaurant needs a confirmed map pin before it can accept orders.** Registration and profile-update both require `{lat, lng}` from GPS or a pasted Google Maps link — there's no address-text fallback in this path, so a restaurant that skips the location step can't be ordered from until they set one.
 - **Prefer an HTTPS email API over raw SMTP.** Most free hosts block outbound SMTP ports outright, which silently breaks password-based senders like Nodemailer/Gmail in production — exactly why email goes through Brevo's HTTPS API here instead.
 
 ---
@@ -568,7 +583,7 @@ All protected routes read a JWT from an `httpOnly` cookie set at login. `user`, 
 | GET | `/user/logout` | user | Clear the session cookie |
 | GET | `/user/profile` | user | Get the logged-in user's profile |
 | PATCH | `/user/profile` | user | Update name / email / phone / picture |
-| POST | `/food-partner/register` | — | Register a restaurant partner |
+| POST | `/food-partner/register` | — | Register a restaurant partner — requires a confirmed `{lat, lng}` (GPS or Maps link) |
 | POST | `/food-partner/login` | — | Log in a restaurant partner |
 | GET | `/food-partner/logout` | foodPartner | Clear the session cookie |
 
@@ -596,7 +611,7 @@ All protected routes read a JWT from an `httpOnly` cookie set at login. `user`, 
 |---|---|---|---|
 | GET | `/` | user | List partners within a flat 15km of your location |
 | GET | `/me` | foodPartner | Own profile + menu + stats |
-| PATCH | `/me` | foodPartner | Update business profile (address auto-geocodes, packaging charge) |
+| PATCH | `/me` | foodPartner | Update business profile (location from GPS/Maps-link if changed, packaging charge) |
 | PATCH | `/me/hours` | foodPartner | Toggle open/closed and/or update hours |
 | POST | `/:id/notify-me` | user | Ask to be notified when a closed restaurant reopens |
 | GET | `/:id` | user | Public partner profile + menu |
@@ -608,8 +623,8 @@ All protected routes read a JWT from an `httpOnly` cookie set at login. `user`, 
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| POST | `/quote` | user | Preview the full bill (incl. delivery fee) for a food + address, without creating an order |
-| POST | `/` | user | Place an order — server computes and stores the full bill |
+| POST | `/quote` | user | Preview the full bill (incl. delivery fee) for a food + a confirmed `{lat, lng}`, without creating an order — no geocoding, coordinates are required |
+| POST | `/` | user | Place an order — server computes and stores the full bill from the restaurant's stored location and the submitted `{lat, lng}` |
 | GET | `/my` | user | The user's order history |
 | GET | `/partner/incoming?days=` | foodPartner | Orders bucketed into Today/Yesterday/Past + stats, including rider info once assigned |
 | GET | `/rider/available` | rider | Unclaimed orders ready for pickup |
@@ -647,11 +662,13 @@ All protected routes read a JWT from an `httpOnly` cookie set at login. `user`, 
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| PATCH | `/api/user/location` | user | Set your home-feed location (GPS coordinates or an address to geocode) |
+| PATCH | `/api/user/location` | user | Set your home-feed location — a saved address's stored `{lat, lng}`, a fresh GPS/Maps-link confirmed pin, or (legacy fallback) an address to geocode |
 | GET | `/api/user/addresses` | user | List saved, labelled delivery addresses |
-| POST | `/api/user/addresses` | user | Save a new labelled address |
+| POST | `/api/user/addresses` | user | Save a new labelled address — requires a confirmed `{lat, lng}` (GPS or Maps link), no free-text address accepted |
+| PATCH | `/api/user/addresses/:id` | user | Update a saved address's label/landmark/location |
 | DELETE | `/api/user/addresses/:id` | user | Remove a saved address |
-| GET | `/api/geo/reverse` | — | Reverse-geocode `lat`/`lng` into house no. / street / city / state / pincode (public — used on pre-signup forms too) |
+| GET | `/api/geo/reverse` | — | Reverse-geocode `lat`/`lng` into a readable address, for display only (public — used on pre-signup forms too) |
+| POST | `/api/geo/parse-maps-link` | — | Extract `{lat, lng}` from a pasted Google Maps link — follows short-link (`maps.app.goo.gl`) redirects server-side, validates the result falls within India |
 
 </details>
 

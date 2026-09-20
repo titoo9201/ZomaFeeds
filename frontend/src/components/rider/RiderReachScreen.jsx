@@ -31,7 +31,7 @@ const RiderReachScreen = ({ order, riderPos: riderFix, mode, onReached }) => {
   const contactName = isPickup ? (order.food?.foodPartner?.name || 'Restaurant') : (order.user?.fullName || 'Customer')
   const contactAddress = isPickup ? order.food?.foodPartner?.address : order.address
   const contactPhone = isPickup ? order.food?.foodPartner?.phone : order.user?.phone
-  const mapsUrl = destination?.lat != null ? `https://www.google.com/maps/dir/?api=1&destination=${destination.lat},${destination.lng}` : null
+  const mapsUrl = destination?.lat != null ? `https://www.google.com/maps/dir/?api=1&destination=${destination.lat},${destination.lng}&travelmode=driving` : null
 
   return <div className="rider-flow-overlay">
     <div className="flow-screen">
@@ -56,7 +56,7 @@ const RiderReachScreen = ({ order, riderPos: riderFix, mode, onReached }) => {
         </div>
         <div className="flow-contact-actions">
           {contactPhone ? <a href={`tel:${contactPhone}`}>📞 Call</a> : <span />}
-          {mapsUrl && <a className="is-primary" href={mapsUrl} target="_blank" rel="noopener noreferrer">📍 Go to map</a>}
+          {mapsUrl && <a className="is-primary" href={mapsUrl} target="_blank" rel="noopener noreferrer">🧭 Navigate to {isPickup ? 'Restaurant' : 'Customer'}</a>}
         </div>
         <div className="flow-meta-row">
           <span>Order: {String(order._id).slice(-10)}</span>

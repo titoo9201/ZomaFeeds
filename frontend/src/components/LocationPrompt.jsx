@@ -1,84 +1,171 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import api from '../config/api'
+import AddressFields from './AddressFields'
+import { EMPTY_ADDRESS, ADDRESS_LABELS } from '../config/address'
 import '../styles/locationPrompt.css'
+import '../styles/saved-addresses.css'
+import '../styles/edit-profile.css'
 
+const labelText = item => item.label === 'Other' ? (item.customLabel || 'Other') : item.label
+
+// Sets the home-feed location (User.location, drives the 15km radius feed query) either from
+// an existing saved delivery address (User.savedAddresses) or from a freshly GPS/Maps-link
+// confirmed pin — the same AddressFields + PinConfirmMap used everywhere else in the app, never
+// a separate/parallel text-address flow. A brand new location can optionally be saved into the
+// address book afterward, under an existing label (overwriting it) or a new one.
 const LocationPrompt = ({ onLocationSet, onSkip }) => {
-  const [mode, setMode] = useState('idle')
-  const [address, setAddress] = useState('')
-  const [error, setError] = useState('')
+  const [isLoadingAddresses, setIsLoadingAddresses] = useState(true)
+  const [savedAddresses, setSavedAddresses] = useState([])
+  const [view, setView] = useState('new') // 'pick' | 'new' | 'save-choice'
+  const [newLocation, setNewLocation] = useState(EMPTY_ADDRESS)
+  const [selectedSavedId, setSelectedSavedId] = useState('')
+  const [confirmedCoords, setConfirmedCoords] = useState(null)
+  const [confirmedUser, setConfirmedUser] = useState(null)
+  const [saveMode, setSaveMode] = useState('existing') // 'existing' | 'new'
+  const [overwriteId, setOverwriteId] = useState('')
+  const [newLabel, setNewLabel] = useState('Home')
+  const [newCustomLabel, setNewCustomLabel] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState('')
 
-  // Sharing your location here also drops a "Home" entry into the saved-address book (if you
-  // don't already have one), so it's ready to pick at checkout without retyping it there too.
-  const saveAsHomeAddress = async (lat, lng) => {
-    try {
-      const { data: existing } = await api.get('/api/user/addresses')
-      if (existing.addresses.some(item => item.label === 'Home')) return
-      const { data: reverse } = await api.get('/api/geo/reverse', { params: { lat, lng } })
-      if (!reverse.address?.city) return
-      await api.post('/api/user/addresses', { label: 'Home', ...reverse.address })
-    } catch (err) { void err }
-  }
+  useEffect(() => {
+    api.get('/api/user/addresses').then(({ data }) => {
+      setSavedAddresses(data.addresses)
+      if (data.addresses.length) {
+        setView('pick')
+        setSelectedSavedId(data.addresses[0]._id)
+        setSaveMode('existing')
+        setOverwriteId(data.addresses[0]._id)
+      } else {
+        setSaveMode('new')
+      }
+    }).catch(() => {}).finally(() => setIsLoadingAddresses(false))
+  }, [])
 
-  const useMyLocation = () => {
-    if (!navigator.geolocation) { setMode('manual'); return }
-    setError('')
-    setMode('requesting')
-    navigator.geolocation.getCurrentPosition(
-      async position => {
-        try {
-          setIsSubmitting(true)
-          const lat = position.coords.latitude
-          const lng = position.coords.longitude
-          const { data } = await api.patch('/api/user/location', { lat, lng })
-          saveAsHomeAddress(lat, lng)
-          onLocationSet(data.user)
-        } catch {
-          setError('Could not save your location. Please try again.')
-          setMode('manual')
-        } finally {
-          setIsSubmitting(false)
-        }
-      },
-      geoError => {
-        if (geoError.code === geoError.PERMISSION_DENIED) setError('Location permission denied. Please allow location access, or enter your address manually.')
-        else if (geoError.code === geoError.POSITION_UNAVAILABLE) setError('Could not detect your location. Please check that Location/GPS is turned on for this device, or enter your address manually.')
-        else setError('Location request timed out. Please enter your address manually.')
-        setMode('manual')
-      },
-      { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
-    )
-  }
-
-  const submitAddress = async event => {
-    event.preventDefault()
-    if (!address.trim()) return
+  const useSavedAddress = async () => {
+    const item = savedAddresses.find(saved => saved._id === selectedSavedId)
+    if (!item) return
     try {
       setIsSubmitting(true)
       setError('')
-      const { data } = await api.patch('/api/user/location', { address: address.trim() })
+      const { data } = await api.patch('/api/user/location', { lat: item.lat, lng: item.lng })
       onLocationSet(data.user)
-    } catch (requestError) {
-      setError(requestError.response?.data?.message || 'Could not find that address.')
+    } catch {
+      setError('Could not set this as your location. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  return <section className="location-prompt">
+  const hasNewPin = Number.isFinite(newLocation.lat) && Number.isFinite(newLocation.lng)
+
+  const confirmNewLocation = async () => {
+    if (!hasNewPin) return
+    try {
+      setIsSubmitting(true)
+      setError('')
+      const { data } = await api.patch('/api/user/location', { lat: newLocation.lat, lng: newLocation.lng })
+      setConfirmedUser(data.user)
+      setConfirmedCoords({ lat: newLocation.lat, lng: newLocation.lng })
+      setView('save-choice')
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || 'Could not set your location. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const skipSaving = () => onLocationSet(confirmedUser)
+
+  const saveAddress = async () => {
+    setError('')
+    if (saveMode === 'new' && newLabel === 'Other' && !newCustomLabel.trim()) {
+      setError('Enter a label for this address.')
+      return
+    }
+    try {
+      setIsSubmitting(true)
+      const { lat, lng } = confirmedCoords
+      if (saveMode === 'existing') {
+        const target = savedAddresses.find(item => item._id === overwriteId)
+        await api.patch(`/api/user/addresses/${overwriteId}`, {
+          label: target.label, customLabel: target.customLabel, lat, lng, landmark: newLocation.landmark
+        })
+      } else {
+        await api.post('/api/user/addresses', { label: newLabel, customLabel: newCustomLabel, lat, lng, landmark: newLocation.landmark })
+      }
+      onLocationSet(confirmedUser)
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || 'Could not save this address. You can still skip saving.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  if (isLoadingAddresses) return null
+
+  return <section className="location-prompt location-prompt--panel">
     <div className="location-prompt-text">
       <strong>See restaurants near you</strong>
       <span>Share your location to get a feed sorted by what's close and highly rated.</span>
     </div>
-    <div className="location-prompt-actions">
-      {mode === 'manual' ? <form className="location-prompt-form" onSubmit={submitAddress}>
-        <input value={address} onChange={event => setAddress(event.target.value)} placeholder="Enter your delivery address" required />
-        <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving...' : 'Save'}</button>
-      </form> : <button type="button" className="location-prompt-btn" onClick={useMyLocation} disabled={mode === 'requesting' || isSubmitting}>{mode === 'requesting' ? 'Requesting...' : 'Use my current location'}</button>}
-      {mode !== 'manual' && <button type="button" className="location-prompt-link" onClick={() => setMode('manual')}>Enter address manually</button>}
-      {onSkip && <button type="button" className="location-prompt-link" onClick={onSkip}>Maybe later</button>}
-    </div>
-    {error && <p className="error-text" role="alert">{error}</p>}
+
+    {view === 'pick' && <div className="location-prompt-panel-body">
+      <div className="field-group">
+        <label htmlFor="location-prompt-saved">Use a saved address</label>
+        <select id="location-prompt-saved" value={selectedSavedId} onChange={event => setSelectedSavedId(event.target.value)}>
+          {savedAddresses.map(item => <option key={item._id} value={item._id}>{labelText(item)} — {item.address}</option>)}
+        </select>
+      </div>
+      <div className="location-prompt-actions">
+        <button type="button" className="location-prompt-btn" onClick={useSavedAddress} disabled={isSubmitting}>{isSubmitting ? 'Setting...' : `Use this address`}</button>
+        <button type="button" className="location-prompt-link" onClick={() => setView('new')}>Set a different location</button>
+        {onSkip && <button type="button" className="location-prompt-link" onClick={onSkip}>Maybe later</button>}
+      </div>
+    </div>}
+
+    {view === 'new' && <div className="location-prompt-panel-body">
+      <AddressFields value={newLocation} onChange={setNewLocation} idPrefix="home-location" />
+      <div className="location-prompt-actions">
+        <button type="button" className="location-prompt-btn" onClick={confirmNewLocation} disabled={isSubmitting || !hasNewPin}>{isSubmitting ? 'Setting...' : 'Use this location'}</button>
+        {savedAddresses.length > 0 && <button type="button" className="location-prompt-link" onClick={() => setView('pick')}>Back to saved addresses</button>}
+        {onSkip && <button type="button" className="location-prompt-link" onClick={onSkip}>Maybe later</button>}
+      </div>
+    </div>}
+
+    {view === 'save-choice' && <div className="location-prompt-panel-body">
+      <p className="small-note">Your location is set. Save this address for later?</p>
+      {savedAddresses.length > 0 && <label className="location-prompt-radio">
+        <input type="radio" name="save-mode" checked={saveMode === 'existing'} onChange={() => setSaveMode('existing')} />
+        Update an existing address
+      </label>}
+      {saveMode === 'existing' && savedAddresses.length > 0 && <div className="field-group">
+        <select value={overwriteId} onChange={event => setOverwriteId(event.target.value)}>
+          {savedAddresses.map(item => <option key={item._id} value={item._id}>{labelText(item)} — {item.address}</option>)}
+        </select>
+      </div>}
+      <label className="location-prompt-radio">
+        <input type="radio" name="save-mode" checked={saveMode === 'new'} onChange={() => setSaveMode('new')} />
+        Save as a new address
+      </label>
+      {saveMode === 'new' && <div className="edit-profile-two-col">
+        <div className="field-group">
+          <select value={newLabel} onChange={event => setNewLabel(event.target.value)}>
+            {ADDRESS_LABELS.map(item => <option key={item} value={item}>{item}</option>)}
+          </select>
+        </div>
+        {newLabel === 'Other' && <div className="field-group">
+          <input value={newCustomLabel} onChange={event => setNewCustomLabel(event.target.value)} placeholder="e.g. Office" />
+        </div>}
+      </div>}
+      {error && <p className="error-text" role="alert">{error}</p>}
+      <div className="form-actions">
+        <button type="button" className="btn-primary" onClick={saveAddress} disabled={isSubmitting}>{isSubmitting ? 'Saving...' : 'Save address'}</button>
+        <button type="button" className="btn-ghost" onClick={skipSaving} disabled={isSubmitting}>Just use it this once</button>
+      </div>
+    </div>}
+
+    {error && view !== 'save-choice' && <p className="error-text" role="alert">{error}</p>}
   </section>
 }
 

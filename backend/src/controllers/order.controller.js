@@ -11,14 +11,14 @@ const { getIO, getRiderSocketId } = require('../socket');
 const FOOD_POPULATE = { path: 'food', select: 'name video description price foodPartner', populate: { path: 'foodPartner', select: 'name isOpen openingTime closingTime address phone' } };
 const RIDER_POPULATE = { path: 'rider', select: 'name phone vehicleNumber profilePicture currentLocation' };
 
-// Food partners don't have a stored geocoded location yet, so the restaurant's address is geocoded here too.
-// geocodeWithFallback retries with progressively coarser (less specific) portions of the address,
-// since Nominatim often can't resolve a house number/society name but can resolve the city/pincode.
-async function calculateDeliveryQuote({ foodPartner, address }) {
-    const [dropLocation, pickupLocation] = await Promise.all([
-        mapService.geocodeWithFallback(address.trim()),
-        mapService.geocodeWithFallback(foodPartner.address)
-    ]);
+// Both ends are always already-confirmed coordinates now — the restaurant's stored location
+// (set via PinConfirmMap at registration/profile-update) and the customer's chosen saved
+// address (also pin-confirmed). No text address to geocode anywhere in this path anymore.
+async function calculateDeliveryQuote({ foodPartner, dropLat, dropLng }) {
+    const pickupLocation = foodPartner.location?.coordinates?.length === 2
+        ? { lat: foodPartner.location.coordinates[1], lng: foodPartner.location.coordinates[0] }
+        : null;
+    const dropLocation = { lat: Number(dropLat), lng: Number(dropLng) };
 
     let distanceKm = null;
     if (pickupLocation && dropLocation) {
@@ -27,9 +27,9 @@ async function calculateDeliveryQuote({ foodPartner, address }) {
     }
 
     let deliveryFee = pricingService.calculateDeliveryFee(distanceKm);
-    // Address genuinely couldn't be geocoded even after the fallback chain — don't block the
-    // order over it, charge a standard delivery fee instead. A confirmed too-far distance still
-    // gets rejected below (that's a real business rule, not a geocoding hiccup).
+    // Both points are known coordinates, so a null distance here means OSRM's routing
+    // service itself failed (network hiccup) — not an address problem. Don't block the
+    // order over that, charge a standard delivery fee instead.
     if (deliveryFee == null && distanceKm == null) deliveryFee = DEFAULT_DELIVERY_FEE;
 
     return { dropLocation, pickupLocation, distanceKm, deliveryFee };
@@ -41,14 +41,15 @@ function deliveryQuoteErrorMessage() {
 
 async function quoteOrder(req, res) {
     try {
-        const { food, quantity, address } = req.body;
-        if (!address?.trim()) return res.status(400).json({ message: 'Address is required' });
+        const { food, quantity, address, lat, lng } = req.body;
+        if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) return res.status(400).json({ message: 'A delivery location is required — select a saved address with a confirmed pin' });
         const foodItem = await foodModel.findById(food);
         if (!foodItem) return res.status(404).json({ message: 'Food not found' });
-        const foodPartner = await foodPartnerModel.findById(foodItem.foodPartner).select('address packagingCharge');
+        const foodPartner = await foodPartnerModel.findById(foodItem.foodPartner).select('address location packagingCharge');
         if (!foodPartner) return res.status(404).json({ message: 'Restaurant not found' });
+        if (!foodPartner.location) return res.status(409).json({ message: "This restaurant hasn't set up their location yet" });
 
-        const { distanceKm, deliveryFee } = await calculateDeliveryQuote({ foodPartner, address });
+        const { distanceKm, deliveryFee } = await calculateDeliveryQuote({ foodPartner, dropLat: lat, dropLng: lng });
         if (deliveryFee == null) return res.status(409).json({ message: deliveryQuoteErrorMessage() });
 
         const itemsTotal = Math.max(1, Number(quantity) || 1) * foodItem.price;
@@ -62,22 +63,24 @@ async function quoteOrder(req, res) {
 
 async function createOrder(req, res) {
     try {
-        const { food, quantity, address } = req.body;
+        const { food, quantity, address, lat, lng } = req.body;
         const foodItem = await foodModel.findById(food);
         if (!foodItem) return res.status(404).json({ message: 'Food not found' });
         if (!foodItem.isAvailable) return res.status(409).json({ message: 'This item is currently unavailable' });
-        const foodPartner = await foodPartnerModel.findById(foodItem.foodPartner).select('isOpen address packagingCharge');
+        const foodPartner = await foodPartnerModel.findById(foodItem.foodPartner).select('isOpen address location packagingCharge');
         if (!foodPartner?.isOpen) return res.status(409).json({ message: 'This restaurant is currently closed', foodPartnerId: foodItem.foodPartner });
-        if (!Number.isInteger(Number(quantity)) || Number(quantity) < 1 || !address?.trim()) return res.status(400).json({ message: 'Quantity and delivery address are required' });
+        if (!Number.isInteger(Number(quantity)) || Number(quantity) < 1) return res.status(400).json({ message: 'A valid quantity is required' });
+        if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) return res.status(400).json({ message: 'A delivery location is required — select a saved address with a confirmed pin' });
+        if (!foodPartner.location) return res.status(409).json({ message: "This restaurant hasn't set up their location yet" });
 
-        const { dropLocation, pickupLocation, distanceKm, deliveryFee } = await calculateDeliveryQuote({ foodPartner, address });
+        const { dropLocation, pickupLocation, distanceKm, deliveryFee } = await calculateDeliveryQuote({ foodPartner, dropLat: lat, dropLng: lng });
         if (deliveryFee == null) return res.status(409).json({ message: deliveryQuoteErrorMessage() });
 
         const itemsTotal = Number(quantity) * foodItem.price;
         const bill = pricingService.computeBill(itemsTotal, deliveryFee, foodPartner.packagingCharge || 0);
 
         const order = await orderModel.create({
-            user: req.user._id, food, quantity: Number(quantity), address: address.trim(),
+            user: req.user._id, food, quantity: Number(quantity), address: address?.trim() || `Pinned location (${dropLocation.lat.toFixed(5)}, ${dropLocation.lng.toFixed(5)})`,
             total: bill.grandTotal, deliveryFee, distanceKm, dropLocation, pickupLocation,
             billBreakdown: {
                 itemsTotal: bill.itemsTotal, restaurantGST: bill.restaurantGST, packagingCharge: bill.packagingCharge,

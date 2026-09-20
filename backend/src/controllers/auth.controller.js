@@ -150,10 +150,11 @@ function logoutUser(req, res) {
 
 async function registerFoodPartner(req, res) {
     try {
-        const { name, email, password, otp, phone, address, contactName, restaurantType } = req.body;
+        const { name, email, password, otp, phone, landmark, contactName, restaurantType, lat, lng } = req.body;
 
         if (!EMAIL_REGEX.test(email || '')) return res.status(400).json({ message: 'Please enter a valid email address' });
         if (!password && !otp) return res.status(400).json({ message: 'Provide a password or an OTP to register' });
+        if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) return res.status(400).json({ message: 'A location is required — use GPS or paste a Google Maps link' });
 
         const isAccountAlreadyExists = await foodPartnerModel.findOne({
             email
@@ -174,7 +175,10 @@ async function registerFoodPartner(req, res) {
         }
 
         const profilePicture = req.file ? (await storageService.uploadFile(req.file.buffer, `profile-${uuid()}`)).url : undefined;
-        const geocoded = await mapService.geocodeWithFallback(address);
+        // No free-text address anymore — location comes from GPS or a pasted Maps link,
+        // confirmed on PinConfirmMap. The landmark note (or a reverse-geocoded label as a
+        // fallback) becomes the display "address" — cosmetic only, never re-geocoded.
+        const address = landmark?.trim() || mapService.formatDisplayAddress(await mapService.reverseGeocode(Number(lat), Number(lng))) || `Pinned location (${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)})`;
         const foodPartner = await foodPartnerModel.create({
             name,
             email,
@@ -184,7 +188,7 @@ async function registerFoodPartner(req, res) {
             contactName,
             profilePicture,
             restaurantType,
-            location: geocoded ? { type: 'Point', coordinates: [geocoded.lng, geocoded.lat] } : undefined
+            location: { type: 'Point', coordinates: [Number(lng), Number(lat)] }
         })
 
         setAuthCookie(res, foodPartner._id, 'foodPartner');

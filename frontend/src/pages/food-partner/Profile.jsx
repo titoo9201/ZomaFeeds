@@ -8,7 +8,7 @@ import LoadingState from '../../components/LoadingState'
 import PageNav from '../../components/PageNav'
 import { clearCartItem } from '../../config/cart'
 import AddressFields from '../../components/AddressFields'
-import { EMPTY_ADDRESS, formatAddress } from '../../config/address'
+import { EMPTY_ADDRESS } from '../../config/address'
 
 const Profile = () => {
   const { id } = useParams()
@@ -80,8 +80,11 @@ const Profile = () => {
       setEditError('')
       const formData = new FormData()
       Object.entries(editFields).forEach(([key, value]) => formData.append(key, value))
-      const address = formatAddress(addressFields)
-      if (address) formData.append('address', address)
+      if (Number.isFinite(addressFields.lat) && Number.isFinite(addressFields.lng)) {
+        formData.append('lat', addressFields.lat)
+        formData.append('lng', addressFields.lng)
+        if (addressFields.landmark?.trim()) formData.append('landmark', addressFields.landmark.trim())
+      }
       if (editPicture) formData.append('profilePicture', editPicture)
       const { data } = await api.patch('/api/food-partner/me', formData)
       setProfile(previous => ({ ...previous, ...data.foodPartner }))
@@ -116,10 +119,10 @@ const Profile = () => {
         <div className="field-group"><label htmlFor="editEmail">Email</label><input id="editEmail" type="email" value={editFields.email} onChange={event => updateField('email', event.target.value)} required /></div>
       </div>
       <div className="field-group">
-        <label>Address</label>
+        <label>Location</label>
         <p className="small-note">Currently saved: {profile?.address || 'not set'}</p>
-        <AddressFields value={addressFields} onChange={setAddressFields} idPrefix="edit-address" required={false} />
-        <p className="small-note">Fill this in only if you want to update your address — saving it updates your map location automatically.</p>
+        <AddressFields value={addressFields} onChange={setAddressFields} idPrefix="edit-address" />
+        <p className="small-note">Fill this in only if you want to update your location — leave it blank to keep your current one.</p>
       </div>
       <div className="field-group">
         <label htmlFor="editRestaurantType">Restaurant type</label>
@@ -145,7 +148,7 @@ const Profile = () => {
 
     {!id && !isEditing && profile && !profile.location && <div className="location-reminder-banner">
       <span>Your restaurant isn't geolocated yet — nearby customers won't see you in their feed.</span>
-      <button type="button" className="profile-logout" onClick={startEditing}>Set address now</button>
+      <button type="button" className="profile-logout" onClick={startEditing}>Set location now</button>
     </div>}
 
     {isClosed && <section className="profile-header" style={{ borderColor: 'var(--color-danger)' }}>

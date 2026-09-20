@@ -35,3 +35,12 @@
 
 .location-reminder-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; border: 1px solid var(--color-warm-accent); border-radius: var(--radius-md); background: color-mix(in srgb, var(--color-warm-accent) 12%, transparent); color: var(--color-text); font-size: .85rem; }
 .location-reminder-banner a { font-weight: 700; }
+
+/* Panel variant — used when the prompt needs room for a saved-address picker, the full
+   GPS/Maps-link AddressFields form, or the post-confirm save-choice step, instead of the
+   single-line bar the base .location-prompt is laid out for. */
+.location-prompt--panel { flex-direction: column; align-items: stretch; gap: 12px; }
+.location-prompt-panel-body { display: grid; gap: 12px; }
+.location-prompt-panel-body select { padding: 9px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-bg); color: var(--color-text); font: inherit; width: 100%; }
+.location-prompt-radio { display: flex; align-items: center; gap: 8px; font-size: .88rem; cursor: pointer; }
+.location-prompt-radio input { accent-color: var(--color-accent); }

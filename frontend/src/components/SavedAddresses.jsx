@@ -26,7 +26,7 @@ const SavedAddresses = ({ selectable = false, onSelect, showDelete = false }) =>
     setEditingId(item._id)
     setLabel(item.label)
     setCustomLabel(item.customLabel || '')
-    setAddressFields({ houseNo: item.houseNo || '', street: item.street || '', city: item.city || '', state: item.state || '', pincode: item.pincode || '' })
+    setAddressFields({ lat: item.lat ?? null, lng: item.lng ?? null, landmark: item.address || '' })
     setError('')
     setIsAdding(true)
   }
@@ -41,6 +41,10 @@ const SavedAddresses = ({ selectable = false, onSelect, showDelete = false }) =>
 
   const saveAddress = async event => {
     event.preventDefault()
+    if (!Number.isFinite(addressFields.lat) || !Number.isFinite(addressFields.lng)) {
+      setError('Use GPS or paste a Google Maps link to set your exact location.')
+      return
+    }
     try {
       setIsSaving(true)
       setError('')

@@ -9,4 +9,14 @@ async function reverseGeocode(req, res) {
     res.json({ address });
 }
 
-module.exports = { reverseGeocode };
+// Address entry is now GPS-or-Maps-link only (no free text to geocode), so the only way to turn
+// a pasted link into a point is parsing the URL itself — never a text geocode call.
+async function parseMapsLink(req, res) {
+    const url = req.body.url;
+    if (!url?.trim()) return res.status(400).json({ message: 'A Google Maps link is required' });
+    const location = await mapService.parseMapsLink(url);
+    if (!location) return res.status(400).json({ message: "Could not read a location from that link. Make sure it's a Google Maps link with a pinned point, or use GPS instead." });
+    res.json({ location });
+}
+
+module.exports = { reverseGeocode, parseMapsLink };

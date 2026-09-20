@@ -1,63 +1,91 @@
 import { useState } from 'react'
 import api from '../config/api'
+import PinConfirmMap from './PinConfirmMap'
 import '../styles/address-fields.css'
 
-const AddressFields = ({ value, onChange, idPrefix = 'addr', required = true }) => {
+// Location capture is GPS-or-Maps-link only — no free-text address, so there's nothing to
+// geocode. Both methods just produce a starting {lat, lng} guess; PinConfirmMap is the single
+// choke point where the user actually confirms (or drags to fix) the exact point that gets saved.
+const AddressFields = ({ value, onChange, idPrefix = 'addr' }) => {
   const [isLocating, setIsLocating] = useState(false)
-  const [error, setError] = useState('')
-
-  const update = (field, fieldValue) => onChange({ ...value, [field]: fieldValue })
+  const [gpsError, setGpsError] = useState('')
+  const [showLinkInput, setShowLinkInput] = useState(false)
+  const [mapsLink, setMapsLink] = useState('')
+  const [isParsingLink, setIsParsingLink] = useState(false)
+  const [linkError, setLinkError] = useState('')
 
   const useMyLocation = () => {
-    if (!navigator.geolocation) { setError('Your browser does not support location sharing.'); return }
-    setError('')
+    if (!navigator.geolocation) { setGpsError('Your browser does not support location sharing.'); return }
+    setGpsError('')
     setIsLocating(true)
-    navigator.geolocation.getCurrentPosition(async position => {
-      try {
-        const { data } = await api.get('/api/geo/reverse', { params: { lat: position.coords.latitude, lng: position.coords.longitude } })
-        onChange({ ...value, ...data.address })
-      } catch {
-        setError('Could not detect your address. Please fill it in manually.')
-      } finally {
-        setIsLocating(false)
-      }
+    navigator.geolocation.getCurrentPosition(position => {
+      setIsLocating(false)
+      onChange({ ...value, lat: position.coords.latitude, lng: position.coords.longitude })
     }, geoError => {
       setIsLocating(false)
-      if (geoError.code === geoError.PERMISSION_DENIED) setError('Location permission denied. Please allow location access, or fill the address in manually.')
-      else if (geoError.code === geoError.POSITION_UNAVAILABLE) setError('Could not detect your location. Please check that Location/GPS is turned on for this device, or fill the address in manually.')
-      else setError('Location request timed out. Please fill the address in manually.')
+      if (geoError.code === geoError.PERMISSION_DENIED) setGpsError('Location permission denied. Please allow location access, or paste a Google Maps link instead.')
+      else if (geoError.code === geoError.POSITION_UNAVAILABLE) setGpsError('Could not detect your location. Please check that Location/GPS is turned on, or paste a Google Maps link instead.')
+      else setGpsError('Location request timed out. Please try again, or paste a Google Maps link instead.')
     }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 })
   }
 
+  const useMapsLink = async () => {
+    if (!mapsLink.trim()) return
+    setLinkError('')
+    setIsParsingLink(true)
+    try {
+      const { data } = await api.post('/api/geo/parse-maps-link', { url: mapsLink.trim() })
+      onChange({ ...value, lat: data.location.lat, lng: data.location.lng })
+      setShowLinkInput(false)
+      setMapsLink('')
+    } catch (requestError) {
+      setLinkError(requestError.response?.data?.message || 'Could not read a location from this link.')
+    } finally {
+      setIsParsingLink(false)
+    }
+  }
+
+  const hasPin = Number.isFinite(value.lat) && Number.isFinite(value.lng)
+
   return <div className="address-fields">
-    <button type="button" className="address-locate-btn" onClick={useMyLocation} disabled={isLocating}>
-      <span aria-hidden="true">📍</span> {isLocating ? 'Locating...' : 'Use my current location'}
-    </button>
-    {error && <p className="error-text" role="alert">{error}</p>}
-    <div className="two-col">
-      <div className="field-group">
-        <label htmlFor={`${idPrefix}-houseNo`}>House / Building no.</label>
-        <input id={`${idPrefix}-houseNo`} value={value.houseNo} onChange={event => update('houseNo', event.target.value)} placeholder="e.g. 151" required={required} />
-      </div>
-      <div className="field-group">
-        <label htmlFor={`${idPrefix}-street`}>Street / Locality</label>
-        <input id={`${idPrefix}-street`} value={value.street} onChange={event => update('street', event.target.value)} placeholder="e.g. Shastri Nagar" required={required} />
-      </div>
+    <div className="address-method-row">
+      <button type="button" className="address-locate-btn" onClick={useMyLocation} disabled={isLocating}>
+        <span aria-hidden="true">📍</span> {isLocating ? 'Locating...' : 'Use my current location'}
+      </button>
+      <button type="button" className="address-locate-btn address-locate-btn--secondary" onClick={() => setShowLinkInput(show => !show)}>
+        <span aria-hidden="true">🔗</span> Paste Google Maps location link
+      </button>
     </div>
-    <div className="two-col">
-      <div className="field-group">
-        <label htmlFor={`${idPrefix}-city`}>City</label>
-        <input id={`${idPrefix}-city`} value={value.city} onChange={event => update('city', event.target.value)} placeholder="e.g. Ghaziabad" required={required} />
-      </div>
-      <div className="field-group">
-        <label htmlFor={`${idPrefix}-state`}>State</label>
-        <input id={`${idPrefix}-state`} value={value.state} onChange={event => update('state', event.target.value)} placeholder="e.g. Uttar Pradesh" required={required} />
-      </div>
-    </div>
+    {gpsError && <p className="error-text" role="alert">{gpsError}</p>}
+
+    {showLinkInput && <div className="field-group">
+      <label htmlFor={`${idPrefix}-maps-link`}>Google Maps link</label>
+      <input
+        id={`${idPrefix}-maps-link`}
+        value={mapsLink}
+        onChange={event => setMapsLink(event.target.value)}
+        placeholder="Paste a Google Maps link (share → copy link)"
+      />
+      <button type="button" className="btn-primary" onClick={useMapsLink} disabled={isParsingLink || !mapsLink.trim()} style={{ marginTop: 8 }}>
+        {isParsingLink ? 'Reading link...' : 'Use this link'}
+      </button>
+      {linkError && <p className="error-text" role="alert">{linkError}</p>}
+    </div>}
+
     <div className="field-group">
-      <label htmlFor={`${idPrefix}-pincode`}>Pincode</label>
-      <input id={`${idPrefix}-pincode`} value={value.pincode} onChange={event => update('pincode', event.target.value)} placeholder="e.g. 201002" required={required} />
+      <label htmlFor={`${idPrefix}-landmark`}>Landmark / notes (optional)</label>
+      <input
+        id={`${idPrefix}-landmark`}
+        value={value.landmark}
+        onChange={event => onChange({ ...value, landmark: event.target.value })}
+        placeholder="e.g. Near Shivalik Hospital"
+      />
+      <p className="small-note">Shown to the rider/restaurant for reference — not used to find your location.</p>
     </div>
+
+    {hasPin
+      ? <PinConfirmMap position={{ lat: value.lat, lng: value.lng }} onDragEnd={({ lat, lng }) => onChange({ ...value, lat, lng })} />
+      : <p className="small-note">Use GPS or paste a Maps link above to set your exact location.</p>}
   </div>
 }
 
