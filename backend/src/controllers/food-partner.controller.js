@@ -2,6 +2,7 @@ const foodPartnerModel = require('../models/foodpartner.model');
 const foodModel = require('../models/food.model');
 const orderModel = require('../models/order.model');
 const reviewModel = require('../models/review.model');
+const commentModel = require('../models/comment.model');
 const notifyRequestModel = require('../models/notifyRequest.model');
 const notificationModel = require('../models/notification.model');
 const storageService = require('../services/storage.service');
@@ -25,14 +26,22 @@ async function getPartnerStats(foodPartnerId) {
     };
 }
 
-// Adds averageRating/reviewCount to each food so a partner (and the public profile) can see how their reels are rated.
 async function enrichFoodItems(foodItems) {
     const foodIds = foodItems.map(item => item._id);
-    const reviewStats = await reviewModel.aggregate([{ $match: { food: { $in: foodIds } } }, { $group: { _id: '$food', total: { $sum: '$rating' }, count: { $sum: 1 } } }]);
+    const [reviewStats, commentCounts] = await Promise.all([
+        reviewModel.aggregate([{ $match: { food: { $in: foodIds } } }, { $group: { _id: '$food', total: { $sum: '$rating' }, count: { $sum: 1 } } }]),
+        commentModel.aggregate([{ $match: { food: { $in: foodIds } } }, { $group: { _id: '$food', count: { $sum: 1 } } }])
+    ]);
     const reviewMap = new Map(reviewStats.map(item => [String(item._id), item]));
+    const commentCountMap = new Map(commentCounts.map(item => [String(item._id), item.count]));
     return foodItems.map(item => {
         const stats = reviewMap.get(String(item._id));
-        return { ...(item.toObject ? item.toObject() : item), averageRating: stats ? Number((stats.total / stats.count).toFixed(1)) : 0, reviewCount: stats?.count || 0 };
+        return {
+            ...(item.toObject ? item.toObject() : item),
+            averageRating: stats ? Number((stats.total / stats.count).toFixed(1)) : 0,
+            reviewCount: stats?.count || 0,
+            commentsCount: commentCountMap.get(String(item._id)) || 0
+        };
     });
 }
 
@@ -115,11 +124,8 @@ async function updateHours(req, res) {
         if (isOpen !== undefined) partner.isOpen = Boolean(isOpen);
         if (openingTime !== undefined) partner.openingTime = openingTime;
         if (closingTime !== undefined) partner.closingTime = closingTime;
-        // validateModifiedOnly: an older account missing a since-added required field (e.g. restaurantType)
-        // shouldn't block an unrelated update like toggling hours.
         await partner.save({ validateModifiedOnly: true });
 
-        // Reopening: notify anyone who asked to be told when this restaurant opens back up.
         if (wasClosed && partner.isOpen) {
             const pending = await notifyRequestModel.find({ foodPartner: partner._id, fulfilled: false });
             if (pending.length) {

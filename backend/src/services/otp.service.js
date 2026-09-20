@@ -2,11 +2,11 @@ const bcrypt = require('bcryptjs');
 const otpModel = require('../models/otp.model');
 const mailService = require('./mail.service');
 
-const OTP_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const OTP_TTL_MS = 5 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
 
 function generateOtp() {
-    return String(Math.floor(1000 + Math.random() * 9000)); // always 4 digits
+    return String(Math.floor(1000 + Math.random() * 9000));
 }
 
 async function requestOtp({ email, role, purpose }) {

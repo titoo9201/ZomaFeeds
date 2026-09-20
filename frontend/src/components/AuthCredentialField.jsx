@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import api from '../config/api'
 
-// Lets a register/login form use either a password or an emailed 4-digit OTP as the credential.
 const AuthCredentialField = ({ role, purpose, email }) => {
   const [method, setMethod] = useState('password')
   const [isSendingOtp, setIsSendingOtp] = useState(false)

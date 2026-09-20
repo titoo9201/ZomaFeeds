@@ -1,13 +1,11 @@
 @import './theme.css';
 
-/* Page container ensures full viewport and background */
 .reels-page {
   height: 100dvh;
   background: var(--color-bg);
-  overflow: hidden; /* parent hides overscroll glow on iOS */
+  overflow: hidden;
 }
 
-/* Vertical feed with snap scrolling */
 .reels-feed {
   height: 100%;
   width: 100%;
@@ -16,21 +14,19 @@
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* old Edge */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
-.reels-feed::-webkit-scrollbar { display: none; } /* Chrome/Safari/Brave */
+.reels-feed::-webkit-scrollbar { display: none; }
 
-/* Desktop-only scroll arrows (see .reels-scroll-nav below); mobile keeps its native swipe/scroll */
 .reels-scroll-nav { display: none; }
 
-/* Each reel takes full viewport */
 .reel {
   position: relative;
   height: 100dvh;
   width: 100%;
   scroll-snap-align: start;
-  background: #000; /* fallback while video loads */
+  background: #000;
 }
 
 .reel-video {
@@ -38,21 +34,19 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover; /* cover entire screen */
+  object-fit: cover;
   object-position: center;
   background: #000;
 }
 
-/* Overlay: content sits on top of video */
 .reel-overlay {
   position: absolute;
   inset: 0;
   display: flex;
-  align-items: flex-end; /* content near bottom */
-  pointer-events: none; /* allow click-through except controls */
+  align-items: flex-end;
+  pointer-events: none;
 }
 
-/* Subtle top-to-bottom gradient so text is readable on any video */
 .reel-overlay-gradient {
   position: absolute;
   inset: 0;
@@ -68,15 +62,14 @@
   position: relative;
   width: 100%;
   padding: var(--space-6);
-  padding-bottom: calc(env(safe-area-inset-bottom, 0) + 72px); /* make space for bottom nav */
+  padding-bottom: calc(env(safe-area-inset-bottom, 0) + 72px);
   display: flex;
   flex-direction: column;
   padding-right: 4.5rem;
   gap: var(--space-4);
-  pointer-events: auto; /* enable button click */
+  pointer-events: none;
 }
 
-/* Truncated to two lines */
 .reel-description {
   color: #fff;
   text-shadow: 0 1px 2px rgba(0,0,0,.4);
@@ -107,13 +100,11 @@
 .reel-btn:active { transform: translateY(1px); }
 .reel-btn:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
 
-/* Desktop tweaks */
 @media (min-width: 768px) {
   .reel-content { padding: 36px; }
   .reel-description { font-size: 1.05rem; max-width: 70ch; }
 }
 
-/* Right-side vertical actions (like, bookmark, comments) */
 .reel-actions {
   display: flex;
   flex-direction: column;
@@ -121,15 +112,12 @@
   pointer-events: auto;
 }
 
-/* Mobile/tablet: overlaid on the video, bottom-right */
 .reel-actions--inline {
   position: absolute;
   right: 10px;
-  bottom: 96px; /* above bottom CTA and nav */
+  bottom: 96px;
 }
 
-/* Desktop: a single rail bound to whichever reel is active, rendered
-   outside the scrolling feed (see the 900px layout below) */
 .reel-actions--floating { display: none; }
 
 .reel-action {
@@ -169,11 +157,10 @@
 .reel-title { color: var(--color-reel-text); font-size: 1.25rem; }
 .reel-rating { color: #ffd166; font-size: .85rem; font-weight: 800; }
 .reel-rating span { color: rgba(255,255,255,.72); font-weight: 500; }
-.reel-links { display: flex; gap: 10px; flex-wrap: wrap; }
+.reel-links { display: flex; gap: 10px; flex-wrap: wrap; pointer-events: auto; }
 .reel-btn-light { background: var(--button-bg); color: var(--button-text); }
-.reel-action.is-active { background: var(--color-accent); color: var(--color-reel-bg); }
+.reel-action.is-active { color: #FF3B5C; }
 
-/* Comments panel: header and input stay put, only the comment list scrolls */
 .comments-panel {
   position: fixed;
   z-index: 80;
@@ -193,12 +180,14 @@
   transition: all .3s ease-in-out;
 }
 
+.comments-drag-handle { flex: 0 0 auto; width: 36px; height: 4px; border-radius: 999px; background: var(--color-border); margin: 10px auto 0; }
+
 .comments-header {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 20px;
+  padding: 12px 20px 14px;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -210,20 +199,64 @@
 .comments-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 8px 20px; }
 .comments-list > p { color: var(--color-text-secondary); }
 
-.comment { display: grid; gap: 3px; padding: 12px 0; border-bottom: 1px solid var(--color-border); }
-.comment span { color: var(--color-text-secondary); }
+.comment { position: relative; display: flex; align-items: flex-start; gap: 10px; padding: 12px 34px 12px 0; border-bottom: 1px solid var(--color-border); border-radius: var(--radius-sm); transition: background var(--transition-base); }
+.comment-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; background: var(--color-surface-alt); }
+.comment-avatar-fallback { display: grid; place-items: center; font-weight: 700; color: var(--color-text-secondary); font-size: .85rem; }
+.comment-body { min-width: 0; display: grid; gap: 2px; }
+.comment-body strong { font-size: .88rem; }
+.comment span { color: var(--color-text-secondary); font-size: .9rem; line-height: 1.4; }
+
+.comment-menu-btn { display: none; position: absolute; top: 10px; right: 0; border: 0; background: transparent; color: var(--color-text-secondary); cursor: pointer; padding: 4px; border-radius: 50%; }
+.comment-menu-btn:hover { color: var(--color-text); background: var(--color-surface-alt); }
+@media (hover: hover) {
+  .comment-menu-btn { display: grid; place-items: center; opacity: 0; transition: opacity var(--transition-base); }
+  .comment:hover .comment-menu-btn { opacity: 1; }
+}
+
+.comment--menu-active { background: var(--color-surface-alt); box-shadow: var(--shadow-sm); }
+
+.comment-menu-backdrop { position: fixed; inset: 0; z-index: 95; background: transparent; }
+.comment-menu-popup {
+  position: fixed; z-index: 96;
+  display: flex; flex-direction: column; overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+}
+.comment-menu-popup button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 13px 16px; border: 0; border-top: 1px solid var(--color-border); background: transparent; font: inherit; font-size: .9rem; font-weight: 700; text-align: left; color: var(--color-text); cursor: pointer; }
+.comment-menu-popup button:first-child { border-top: 0; }
+.comment-menu-popup button:hover { background: var(--color-surface-alt); }
+.comment-menu-delete { color: var(--color-danger); }
 
 .comments-form { flex: 0 0 auto; display: flex; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--color-border); }
 .comments-form input { min-width: 0; flex: 1; padding: 11px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-bg); color: var(--color-text); }
 .comments-form button { border: 0; border-radius: 999px; background: var(--color-accent); color: var(--color-surface); padding: 0 16px; font-weight: 700; cursor: pointer; }
 .comments-form button:disabled { cursor: wait; opacity: .65; }
 
-/* ------------------------------------------------------------------ */
-/* Desktop "theater" layout: a centered phone-ratio card, a single      */
-/* action rail bound to whichever reel is active, and comments docking  */
-/* beside the card — all laid out as plain flex siblings so nothing     */
-/* overflows the card and forces a scrollbar (see reel-actions above).  */
-/* ------------------------------------------------------------------ */
+@media (max-width: 899.98px) {
+  .reel--shrunk {
+    position: fixed;
+    top: 14px;
+    left: 14px;
+    width: 84px;
+    height: 130px;
+    border-radius: 14px;
+    box-shadow: 0 10px 28px rgba(0,0,0,.4);
+    z-index: 90;
+    scroll-snap-align: none;
+  }
+  .reel--shrunk .reel-video { border-radius: 14px; }
+  .reel--shrunk .reel-actions--inline,
+  .reel--shrunk .reel-content { display: none; }
+
+  .reels-page--comments-open .comments-panel {
+    top: 160px;
+    max-height: none;
+    height: auto;
+  }
+}
+
 @media (min-width: 900px) {
   .reels-page {
     display: flex;
@@ -249,11 +282,9 @@
 
   .reel-content { padding: 30px; padding-bottom: 34px; }
 
-  /* The per-video overlay rail is hidden; one rail floats beside the card instead */
   .reel-actions--inline { display: none; }
   .reel-actions--floating { display: flex; flex: 0 0 auto; gap: 22px; }
 
-  /* Two arrow buttons docked to the card's right edge, replacing the hidden scrollbar */
   .reels-scroll-nav { display: flex; flex-direction: column; gap: 10px; flex: 0 0 auto; }
   .reels-scroll-nav button {
     width: 40px; height: 40px; border-radius: 50%;
@@ -275,7 +306,6 @@
   .reel-action.is-active { background: var(--button-bg); color: #fff; border-color: transparent; }
   .reel-action__count { color: var(--color-text); font-weight: 700; font-size: 13px; }
 
-  /* Docks beside the card instead of floating over a corner of the page */
   .comments-panel {
     position: static;
     flex: 0 0 auto;

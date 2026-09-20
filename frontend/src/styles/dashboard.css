@@ -13,7 +13,6 @@
   .dashboard-page { padding: 64px 16px 120px; }
 }
 
-/* Restaurant hours / open-closed control */
 .hours-card { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding: var(--space-5); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); box-shadow: var(--shadow-sm); }
 .hours-status { display: flex; align-items: center; gap: 12px; }
 .hours-status-label { display: grid; gap: 2px; }
@@ -35,10 +34,29 @@
 .new-item-btn { border: 0; border-radius: 999px; padding: 10px 18px; background: var(--button-bg); color: var(--button-text); font-weight: 800; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
 .new-item-btn:hover { filter: saturate(1.08) brightness(1.04); }
 
-/* Menu grid item availability badge */
 .availability-badge { position: absolute; top: 8px; right: 8px; z-index: 1; padding: 3px 8px; border-radius: 999px; font-size: .68rem; font-weight: 800; background: color-mix(in srgb, var(--color-danger) 85%, transparent); color: #fff; }
 
-/* Incoming orders */
+.profile-video-meta:has(.dash-menu-item-stats) { flex-wrap: wrap; row-gap: 4px; }
+.profile-video-meta .dash-menu-item-stats { display: flex; flex: 1 0 100%; justify-content: flex-end; gap: 6px; }
+.dash-stat-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 999px; background: var(--color-surface-alt); color: var(--color-text-secondary); font-size: .7rem; font-weight: 800; border: 1px solid var(--color-border); }
+.dash-stat-pill--btn { cursor: pointer; }
+.dash-stat-pill--btn:hover { border-color: var(--color-accent); color: var(--color-accent); }
+
+.dash-comments-panel { position: fixed; z-index: 80; right: 0; bottom: 0; left: 0; margin: 0 auto; width: min(480px, 100%); max-height: 70dvh; display: flex; flex-direction: column; background: var(--color-surface); color: var(--color-text); border: 1px solid var(--color-border); border-bottom: 0; border-radius: var(--radius-md) var(--radius-md) 0 0; box-shadow: var(--shadow-md); overflow: hidden; }
+.dash-comments-header { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--color-border); }
+.dash-comments-header h2 { margin: 0; font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-comments-close { flex: 0 0 auto; background: transparent; border: 0; color: var(--color-text); font-size: 1.6rem; line-height: 1; cursor: pointer; }
+.dash-comments-close:hover { color: var(--color-accent); }
+.dash-comments-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 8px 20px; }
+.dash-comments-list > p { color: var(--color-text-secondary); }
+.dash-comment { display: flex; align-items: flex-start; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--color-border); }
+.dash-comment-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; background: var(--color-surface-alt); }
+.dash-comment-avatar-fallback { display: grid; place-items: center; font-weight: 700; color: var(--color-text-secondary); font-size: .85rem; }
+.dash-comment-body { min-width: 0; display: grid; gap: 2px; }
+.dash-comment-body strong { font-size: .88rem; }
+.dash-comment-body span { color: var(--color-text-secondary); font-size: .9rem; line-height: 1.4; }
+.dash-comments-note { flex: 0 0 auto; margin: 0; padding: 10px 20px 16px; text-align: center; color: var(--color-text-secondary); font-size: .78rem; }
+
 .incoming-orders { display: grid; gap: var(--space-5); }
 
 .order-stats-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
@@ -48,7 +66,6 @@
 .order-stat-sub { color: var(--color-text-secondary); font-size: .8rem; }
 .order-stat-revenue { font-weight: 700; font-size: .85rem; }
 
-/* Today / Yesterday / Past — vertical columns on wide screens, stacked on narrow ones */
 .order-buckets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
 .order-bucket { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface-alt); min-width: 0; }
 .order-bucket-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

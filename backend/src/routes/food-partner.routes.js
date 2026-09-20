@@ -21,7 +21,6 @@ router.patch('/me/hours', authMiddleware.authFoodPartnerMiddleware, foodPartnerC
 router.post('/:id/notify-me', authMiddleware.authUserMiddleware, foodPartnerController.notifyMe)
 
 
-/* /api/food-partner/:id */
 router.get("/:id",
     authMiddleware.authUserMiddleware,
     foodPartnerController.getFoodPartnerById)

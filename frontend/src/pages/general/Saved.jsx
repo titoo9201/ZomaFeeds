@@ -23,9 +23,7 @@ const Saved = () => {
         try {
             await api.post('/api/food/save', { foodId: item._id })
             setVideos((prev) => prev.filter((v) => v._id !== item._id))
-        } catch {
-            // noop
-        }
+        } catch (err) { void err }
     }
 
     const likeSaved = async (item) => {

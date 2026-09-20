@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Heart, Bookmark, MessageCircle, Volume2, VolumeX, MoreVertical, Trash2 } from 'lucide-react'
 import api from '../config/api'
 
 const getStoredMuted = () => {
@@ -18,6 +19,14 @@ const ReelFeed = ({ items = [], onLike, onSave, onCommentAdded, emptyMessage = '
   const [commentsError, setCommentsError] = useState('')
   const [isCommentsLoading, setIsCommentsLoading] = useState(false)
   const [pendingAction, setPendingAction] = useState('')
+  const [currentUserId, setCurrentUserId] = useState('')
+  const [commentMenu, setCommentMenu] = useState(null)
+  const commentRefs = useRef(new Map())
+  const pressTimerRef = useRef(null)
+
+  useEffect(() => { api.get('/api/auth/me').then(({ data }) => setCurrentUserId(data.account?._id || '')).catch(() => {}) }, [])
+
+  const itemIds = items.map(item => item._id).join(',')
 
   useEffect(() => {
     const observer = new IntersectionObserver(entries => entries.forEach(entry => {
@@ -29,50 +38,43 @@ const ReelFeed = ({ items = [], onLike, onSave, onCommentAdded, emptyMessage = '
     }), { threshold: [0, 0.6, 1] })
     videoRefs.current.forEach(video => observer.observe(video))
     return () => observer.disconnect()
-  }, [items])
+  }, [itemIds])
 
   const activeItem = items.find(item => item._id === activeItemId) ?? items[0]
+  const activeSongUrl = activeItem?.song?.url
+  const activeSongStart = activeItem?.song?.startTime || 0
+  const activeSongDuration = activeItem?.song?.clipDuration || 30
 
-  // A video with its own song attached stays muted (the song plays instead); otherwise it
-  // carries its own sound, gated by the shared mute toggle like every other reel.
   useEffect(() => {
     videoRefs.current.forEach((video, id) => {
       const item = items.find(candidate => candidate._id === id)
       video.muted = isMuted || Boolean(item?.song?.url)
     })
-  }, [isMuted, items])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMuted, itemIds])
 
-  // One shared <audio> element plays whichever active reel's song, looping just the chosen
-  // clip (startTime to startTime + clipDuration) alongside its video — not the whole track.
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
-    const song = activeItem?.song
-    if (!song?.url || isMuted) { audio.pause(); return }
-    const startTime = song.startTime || 0
-    const clipDuration = song.clipDuration || 30
+    if (!activeSongUrl || isMuted) { audio.pause(); return }
 
-    // Seeking works reliably only once the browser has loaded the new track's metadata —
-    // setting currentTime right after src is often silently ignored/clamped to 0 otherwise.
-    const seekToStart = () => { audio.currentTime = startTime }
-    const loopClip = () => { if (audio.currentTime >= startTime + clipDuration || audio.currentTime < startTime) audio.currentTime = startTime }
+    const seekToStart = () => { audio.currentTime = activeSongStart }
+    const loopClip = () => { if (audio.currentTime >= activeSongStart + activeSongDuration || audio.currentTime < activeSongStart) audio.currentTime = activeSongStart }
 
-    if (audio.src !== song.url) {
-      audio.src = song.url
+    if (audio.src !== activeSongUrl) {
+      audio.src = activeSongUrl
       audio.addEventListener('loadedmetadata', seekToStart, { once: true })
-    } else {
-      seekToStart()
+      audio.play().catch(() => {})
+    } else if (audio.paused) {
+      audio.play().catch(() => {})
     }
     audio.loop = false
     audio.addEventListener('timeupdate', loopClip)
-    audio.play().catch(() => {})
     return () => { audio.removeEventListener('timeupdate', loopClip); audio.removeEventListener('loadedmetadata', seekToStart) }
-  }, [activeItem, isMuted])
+  }, [activeSongUrl, activeSongStart, activeSongDuration, isMuted])
 
   useEffect(() => () => audioRef.current?.pause(), [])
 
-  // Desktop-only: click the arrows or press ↑/↓ to move one reel at a time instead of relying
-  // on the (now-hidden) native scrollbar — mobile keeps its normal touch scroll/swipe.
   const scrollByReel = useCallback(direction => {
     const feed = feedRef.current
     if (!feed) return
@@ -93,7 +95,7 @@ const ReelFeed = ({ items = [], onLike, onSave, onCommentAdded, emptyMessage = '
 
   const toggleMute = () => setIsMuted(previous => {
     const next = !previous
-    try { window.localStorage.setItem('zomafeeds-muted', String(next)) } catch { /* storage unavailable */ }
+    try { window.localStorage.setItem('zomafeeds-muted', String(next)) } catch (err) { void err }
     return next
   })
 
@@ -126,6 +128,37 @@ const ReelFeed = ({ items = [], onLike, onSave, onCommentAdded, emptyMessage = '
     }
   }
 
+  const openCommentMenu = comment => {
+    if (!comment._id || comment.user?._id !== currentUserId) return
+    const el = commentRefs.current.get(comment._id)
+    const rect = el?.getBoundingClientRect()
+    if (!rect) return
+    const width = 190
+    setCommentMenu({
+      comment,
+      style: {
+        top: Math.min(rect.bottom + 6, window.innerHeight - 110),
+        left: Math.min(rect.left, window.innerWidth - width - 12),
+        width
+      }
+    })
+  }
+  const closeCommentMenu = () => setCommentMenu(null)
+
+  const startPress = comment => { pressTimerRef.current = window.setTimeout(() => openCommentMenu(comment), 500) }
+  const cancelPress = () => window.clearTimeout(pressTimerRef.current)
+
+  const deleteComment = async comment => {
+    closeCommentMenu()
+    try {
+      await api.delete(`/api/comments/${comment._id}`)
+      setComments(previous => previous.filter(item => item._id !== comment._id))
+      onCommentAdded?.(activeComments, Math.max(0, comments.length - 1))
+    } catch (error) {
+      setCommentsError(error.response?.data?.message || 'Could not delete this comment.')
+    }
+  }
+
   const runAction = async (action, item, callback) => {
     const actionKey = `${action}-${item._id}`
     if (pendingAction) return
@@ -138,15 +171,15 @@ const ReelFeed = ({ items = [], onLike, onSave, onCommentAdded, emptyMessage = '
   }
 
   const renderActionButtons = item => <>
-    <div className="reel-action-group"><button type="button" onClick={toggleMute} className="reel-action" aria-label={isMuted ? 'Turn sound on' : 'Turn sound off'}>{isMuted ? '🔇' : '🔊'}</button></div>
-    <div className="reel-action-group"><button disabled={Boolean(pendingAction)} onClick={() => runAction('like', item, onLike)} className={`reel-action ${item.liked ? 'is-active' : ''}`} aria-label="Like">{pendingAction === `like-${item._id}` ? '...' : '♥'}</button><div className="reel-action__count">{item.likeCount ?? 0}</div></div>
-    <div className="reel-action-group"><button disabled={Boolean(pendingAction)} onClick={() => runAction('save', item, onSave)} className={`reel-action ${item.saved ? 'is-active' : ''}`} aria-label="Save">{pendingAction === `save-${item._id}` ? '...' : '🔖'}</button><div className="reel-action__count">{item.savesCount ?? 0}</div></div>
-    <div className="reel-action-group"><button disabled={isCommentsLoading} onClick={() => openComments(item)} className="reel-action" aria-label="Comments">{isCommentsLoading ? '...' : '☵'}</button><div className="reel-action__count">{item.commentsCount ?? 0}</div></div>
+    <div className="reel-action-group"><button type="button" onClick={toggleMute} className="reel-action" aria-label={isMuted ? 'Turn sound on' : 'Turn sound off'}>{isMuted ? <VolumeX size={22} /> : <Volume2 size={22} />}</button></div>
+    <div className="reel-action-group"><button disabled={Boolean(pendingAction)} onClick={() => runAction('like', item, onLike)} className={`reel-action ${item.liked ? 'is-active' : ''}`} aria-label="Like">{pendingAction === `like-${item._id}` ? '...' : <Heart size={22} fill={item.liked ? 'currentColor' : 'none'} />}</button><div className="reel-action__count">{item.likeCount ?? 0}</div></div>
+    <div className="reel-action-group"><button disabled={Boolean(pendingAction)} onClick={() => runAction('save', item, onSave)} className={`reel-action ${item.saved ? 'is-active' : ''}`} aria-label="Save">{pendingAction === `save-${item._id}` ? '...' : <Bookmark size={22} fill={item.saved ? 'currentColor' : 'none'} />}</button><div className="reel-action__count">{item.savesCount ?? 0}</div></div>
+    <div className="reel-action-group"><button disabled={isCommentsLoading} onClick={() => openComments(item)} className="reel-action" aria-label="Comments">{isCommentsLoading ? '...' : <MessageCircle size={22} />}</button><div className="reel-action__count">{item.commentsCount ?? 0}</div></div>
   </>
 
-  return <div className="reels-page"><audio ref={audioRef} /><div className="reels-feed" ref={feedRef} role="list">
+  return <div className={`reels-page${activeComments ? ' reels-page--comments-open' : ''}`}><audio ref={audioRef} /><div className="reels-feed" ref={feedRef} role="list">
     {items.length === 0 && <div className="empty-state"><p>{emptyMessage}</p></div>}
-    {items.map(item => <section key={item._id} className="reel" role="listitem">
+    {items.map(item => <section key={item._id} className={`reel${activeComments?._id === item._id ? ' reel--shrunk' : ''}`} role="listitem">
       <video ref={element => element ? videoRefs.current.set(item._id, element) : videoRefs.current.delete(item._id)} data-id={item._id} className="reel-video" src={item.video} muted={isMuted || Boolean(item.song?.url)} playsInline loop preload="metadata" />
       <div className="reel-overlay"><div className="reel-overlay-gradient" aria-hidden="true" />
         <div className="reel-actions reel-actions--inline">{renderActionButtons(item)}</div>
@@ -160,9 +193,32 @@ const ReelFeed = ({ items = [], onLike, onSave, onCommentAdded, emptyMessage = '
   </div>}
   {activeItem && <div className="reel-actions reel-actions--floating">{renderActionButtons(activeItem)}</div>}
   {activeComments && <aside className="comments-panel">
+    <div className="comments-drag-handle" aria-hidden="true" />
     <div className="comments-header"><h2>Comments</h2><button className="comments-close" onClick={() => setActiveComments(null)} aria-label="Close comments">×</button></div>
-    <div className="comments-list">{isCommentsLoading ? <p>Loading comments...</p> : commentsError ? <p className="error-text" role="alert">{commentsError}</p> : comments.length === 0 ? <p>There is no comment</p> : comments.map(comment => <div className="comment" key={comment._id}><strong>{comment.user?.fullName}</strong><span>{comment.text}</span></div>)}</div>
+    <div className="comments-list">{isCommentsLoading ? <p>Loading comments...</p> : commentsError ? <p className="error-text" role="alert">{commentsError}</p> : comments.length === 0 ? <p>There is no comment</p> : comments.map(comment => {
+      const isMine = comment.user?._id === currentUserId
+      return <div
+        key={comment._id}
+        ref={element => element ? commentRefs.current.set(comment._id, element) : commentRefs.current.delete(comment._id)}
+        className={`comment${commentMenu?.comment._id === comment._id ? ' comment--menu-active' : ''}`}
+        onTouchStart={isMine ? () => startPress(comment) : undefined}
+        onTouchEnd={isMine ? cancelPress : undefined}
+        onTouchMove={isMine ? cancelPress : undefined}
+        onContextMenu={isMine ? event => event.preventDefault() : undefined}
+      >
+        {comment.user?.profilePicture ? <img className="comment-avatar" src={comment.user.profilePicture} alt="" /> : <div className="comment-avatar comment-avatar-fallback">{comment.user?.fullName?.slice(0, 1) || 'U'}</div>}
+        <div className="comment-body"><strong>{comment.user?.fullName}</strong><span>{comment.text}</span></div>
+        {isMine && <button type="button" className="comment-menu-btn" onClick={() => openCommentMenu(comment)} aria-label="Comment options"><MoreVertical size={16} /></button>}
+      </div>
+    })}</div>
     <form className="comments-form" onSubmit={addComment}><input disabled={pendingAction === 'comment'} value={commentText} onChange={event => setCommentText(event.target.value)} placeholder="Add a comment" /><button disabled={pendingAction === 'comment'} type="submit">{pendingAction === 'comment' ? 'Posting...' : 'Post'}</button></form>
-  </aside>}</div>
+  </aside>}
+  {commentMenu && <>
+    <div className="comment-menu-backdrop" onClick={closeCommentMenu} />
+    <div className="comment-menu-popup" style={commentMenu.style}>
+      <button type="button" className="comment-menu-delete" onClick={() => deleteComment(commentMenu.comment)}><Trash2 size={16} /> Delete</button>
+      <button type="button" className="comment-menu-cancel" onClick={closeCommentMenu}>Cancel</button>
+    </div>
+  </>}</div>
 }
 export default ReelFeed

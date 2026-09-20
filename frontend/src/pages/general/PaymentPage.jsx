@@ -26,7 +26,6 @@ const PaymentPage = () => {
 
   const isAwaitingRestaurant = Boolean(order?.paymentMethod) && order?.status === 'pending'
 
-  // Poll while the restaurant hasn't accepted or rejected the order yet — there's no push/socket layer here.
   useEffect(() => {
     if (!isAwaitingRestaurant) return
     const interval = window.setInterval(() => {
@@ -50,7 +49,6 @@ const PaymentPage = () => {
   const isAccepted = order?.status === 'preparing'
   const isRejected = order?.status === 'cancelled'
 
-  // Keeps the bottom-nav cart icon pointed at this order while it's unresolved, and clears it once accepted/rejected.
   useEffect(() => {
     if (!order) return
     if (isAccepted || isRejected) clearCartItem()

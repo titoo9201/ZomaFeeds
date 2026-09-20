@@ -6,8 +6,6 @@ const commentModel = require('../models/comment.model')
 const reviewModel = require('../models/review.model')
 const { v4: uuid } = require("uuid")
 
-// Restaurant-level rating: average across every review left on any of that partner's dishes,
-// so a customer sees "how good is this restaurant overall" alongside the single dish's rating.
 async function getPartnerRatingMap() {
     const stats = await foodModel.aggregate([
         { $lookup: { from: reviewModel.collection.name, localField: '_id', foreignField: 'food', as: 'reviews' } },
@@ -17,8 +15,6 @@ async function getPartnerRatingMap() {
     return new Map(stats.map(item => [String(item._id), { averageRating: Number((item.total / item.count).toFixed(1)), reviewCount: item.count }]));
 }
 
-// The song comes in as a JSON string when the request is multipart (create/upload with a video file),
-// or as a plain object when the request body is regular JSON (editing an existing item).
 function parseSong(rawSong) {
     if (!rawSong) return undefined;
     const song = typeof rawSong === 'string' ? JSON.parse(rawSong) : rawSong;
@@ -76,8 +72,6 @@ async function updateFood(req, res) {
             food.song = song;
         }
 
-        // validateModifiedOnly: an older reel missing a since-added required field (e.g. category)
-        // shouldn't block an unrelated update like toggling availability.
         await food.save({ validateModifiedOnly: true });
         res.json({ message: "Food updated successfully", food });
     } catch (error) {

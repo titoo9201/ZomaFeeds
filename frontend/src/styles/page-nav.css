@@ -1,4 +1,3 @@
-/* Back arrow + close-to-home controls shown on every screen below the app's home/root */
 .page-nav { position: fixed; z-index: 90; top: 18px; left: 22px; display: flex; gap: 8px; }
 .page-nav__btn { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 999px; border: 1px solid var(--color-border); background: color-mix(in srgb, var(--color-surface) 88%, transparent); color: var(--color-text); box-shadow: var(--shadow-sm); cursor: pointer; }
 .page-nav__btn:hover { border-color: var(--color-accent); color: var(--color-accent); }

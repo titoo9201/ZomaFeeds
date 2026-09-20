@@ -1,7 +1,5 @@
 const axios = require('axios');
 
-// Sent over HTTPS via Brevo's transactional email API instead of raw SMTP — most free-tier hosts
-// (Render included) block outbound SMTP ports, which made nodemailer/Gmail time out in production.
 const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
 
 const BRAND_GRADIENT = 'linear-gradient(135deg, #F56A4C, #E23744, #C13584, #833AB4)';
@@ -9,9 +7,6 @@ const TEXT_MAIN = '#201113';
 const TEXT_MUTED = '#5E4548';
 const SURFACE_MUTED = '#FBEAE6';
 
-// Every email shares one shell — a gradient header carrying the ZomaFeeds wordmark (a styled
-// text logo, since SVG/PNG logos render inconsistently across email clients), a white content
-// card, and a muted footer — so the brand looks consistent no matter which email fires.
 function renderShell({ preheader = '', heading, bodyHtml }) {
     return `
     <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${preheader}</div>

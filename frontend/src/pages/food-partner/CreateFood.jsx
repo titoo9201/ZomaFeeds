@@ -36,8 +36,6 @@ const CreateFood = () => {
         return () => URL.revokeObjectURL(url);
     }, [ videoFile ]);
 
-    // Reels are capped at 30s and need at least 5s for a song clip to make sense — checked once
-    // the browser reports the real duration, since that isn't known synchronously on selection.
     useEffect(() => {
         if (videoDuration == null) return;
         if (videoDuration < 5 || videoDuration > 30) {

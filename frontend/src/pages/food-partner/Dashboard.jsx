@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Heart, MessageCircle } from 'lucide-react'
 import api from '../../config/api'
 import '../../styles/dashboard.css'
 import '../../styles/profile.css'
@@ -20,6 +21,10 @@ const Dashboard = () => {
   const [isSavingHours, setIsSavingHours] = useState(false)
   const [openingDraft, setOpeningDraft] = useState('09:00')
   const [closingDraft, setClosingDraft] = useState('22:00')
+  const [activeComments, setActiveComments] = useState(null)
+  const [comments, setComments] = useState([])
+  const [isCommentsLoading, setIsCommentsLoading] = useState(false)
+  const [commentsError, setCommentsError] = useState('')
 
   const loadProfile = useCallback(() => api.get('/api/food-partner/me').then(({ data }) => {
     setProfile(data.foodPartner)
@@ -32,8 +37,6 @@ const Dashboard = () => {
 
   const reloadIncoming = useCallback(() => api.get(`/api/orders/partner/incoming?days=${historyDays}`).then(({ data }) => setOrderData(data)).catch(() => {}), [historyDays])
 
-  // No socket layer here, so poll for new incoming orders instead of making the partner refresh
-  // the page by hand every time a customer places one.
   useEffect(() => {
     reloadIncoming()
     const interval = window.setInterval(reloadIncoming, 10000)
@@ -88,6 +91,20 @@ const Dashboard = () => {
       setError(requestError.response?.data?.message || 'Could not update hours.')
     } finally {
       setIsSavingHours(false)
+    }
+  }
+
+  const openComments = async video => {
+    setActiveComments(video)
+    setCommentsError('')
+    setIsCommentsLoading(true)
+    try {
+      const { data } = await api.get(`/api/comments/${video._id}`)
+      setComments(data.comments)
+    } catch (requestError) {
+      setCommentsError(requestError.response?.data?.message || 'Could not load comments.')
+    } finally {
+      setIsCommentsLoading(false)
     }
   }
 
@@ -155,7 +172,18 @@ const Dashboard = () => {
         <h2>Your menu</h2>
         <Link className="new-item-btn" to="/create-food">+ New item</Link>
       </div>
-      {videos.length > 0 ? <div className="profile-grid">{videos.map(video => <DashboardMenuItem key={video._id} video={video} />)}</div> : <p className="empty-copy">No menu reels yet — add your first item.</p>}
+      {videos.length > 0 ? <div className="profile-grid">{videos.map(video => <DashboardMenuItem key={video._id} video={video} onViewComments={openComments} />)}</div> : <p className="empty-copy">No menu reels yet — add your first item.</p>}
+
+      {activeComments && <aside className="dash-comments-panel">
+        <div className="dash-comments-header"><h2>Comments · {activeComments.name}</h2><button className="dash-comments-close" onClick={() => setActiveComments(null)} aria-label="Close comments">×</button></div>
+        <div className="dash-comments-list">
+          {isCommentsLoading ? <p>Loading comments...</p> : commentsError ? <p className="error-text" role="alert">{commentsError}</p> : comments.length === 0 ? <p className="empty-copy">No comments yet.</p> : comments.map(comment => <div className="dash-comment" key={comment._id}>
+            {comment.user?.profilePicture ? <img className="dash-comment-avatar" src={comment.user.profilePicture} alt="" /> : <div className="dash-comment-avatar dash-comment-avatar-fallback">{comment.user?.fullName?.slice(0, 1) || 'U'}</div>}
+            <div className="dash-comment-body"><strong>{comment.user?.fullName}</strong><span>{comment.text}</span></div>
+          </div>)}
+        </div>
+        <p className="dash-comments-note">Read-only — only customers can post comments.</p>
+      </aside>}
     </>}
   </div>
 }
@@ -220,11 +248,17 @@ const IncomingOrderCard = ({ order, respondingId, rejectDraftId, rejectReason, o
   </article>
 }
 
-const DashboardMenuItem = ({ video }) => <Link className="profile-grid-item" to={`/manage-food/${video._id}`}>
+const DashboardMenuItem = ({ video, onViewComments }) => <Link className="profile-grid-item" to={`/manage-food/${video._id}`}>
   <video className="profile-grid-video" src={video.video} muted playsInline preload="metadata" />
   {!video.isAvailable && <span className="availability-badge">Unavailable</span>}
   <span className="reel-rating-badge">★ {video.averageRating || 0} <span>({video.reviewCount || 0})</span></span>
-  <div className="profile-video-meta"><div><strong>{video.name}</strong><small>₹{video.price ?? 1} · {video.category}</small></div></div>
+  <div className="profile-video-meta">
+    <div><strong>{video.name}</strong><small>₹{video.price ?? 1} · {video.category}</small></div>
+    <div className="dash-menu-item-stats">
+      <span className="dash-stat-pill" aria-label={`${video.likeCount || 0} likes`}><Heart size={13} fill="currentColor" /> {video.likeCount || 0}</span>
+      <button type="button" className="dash-stat-pill dash-stat-pill--btn" aria-label="View comments" onClick={event => { event.preventDefault(); event.stopPropagation(); onViewComments(video) }}><MessageCircle size={13} /> {video.commentsCount || 0}</button>
+    </div>
+  </div>
 </Link>
 
 export default Dashboard

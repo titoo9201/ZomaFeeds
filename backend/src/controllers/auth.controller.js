@@ -19,7 +19,6 @@ function setAuthCookie(res, id, role) {
     });
 }
 
-// Shared by both roles: request a 4-digit OTP by email, for either registering or logging in.
 async function requestOtp(req, res) {
     try {
         const { email, role, purpose } = req.body;

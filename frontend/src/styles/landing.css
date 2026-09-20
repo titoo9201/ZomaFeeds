@@ -2,7 +2,6 @@
 
 .landing-page { background: var(--color-bg); color: var(--color-text); overflow-x: hidden; }
 
-/* Top nav */
 .landing-nav { padding: 18px clamp(20px, 5vw, 64px); }
 .landing-nav-inner { max-width: 1160px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .landing-logo { font-size: 1.35rem; font-weight: 800; letter-spacing: -.02em; background: var(--brand-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; }
@@ -12,7 +11,6 @@
 .landing-nav-links a.landing-nav-cta { padding: 9px 18px; border-radius: 999px; background: var(--button-bg); color: var(--button-text); }
 .landing-nav-links a.landing-nav-cta:hover { color: var(--button-text); filter: saturate(1.08) brightness(1.04); }
 
-/* Hero */
 .landing-hero { padding: clamp(48px, 8vw, 96px) clamp(20px, 5vw, 64px) clamp(56px, 9vw, 104px); background: var(--brand-gradient); color: #fff; text-align: center; }
 .landing-hero-inner { max-width: 760px; margin: 0 auto; display: grid; gap: 20px; justify-items: center; }
 .landing-hero-eyebrow { display: inline-flex; padding: 6px 14px; border-radius: 999px; background: rgba(255,255,255,.18); font-size: .78rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }
@@ -29,25 +27,21 @@
 .landing-btn-ghost { background: rgba(255,255,255,.12); color: #fff; border: 1.5px solid rgba(255,255,255,.55); }
 .landing-btn-ghost:hover { background: rgba(255,255,255,.2); }
 
-/* On light (non-hero) sections, buttons need theme-aware colors */
 .landing-section .landing-btn-primary { background: var(--button-bg); color: var(--button-text); box-shadow: 0 2px 8px rgba(226,55,68,.18); }
 .landing-section .landing-btn-ghost { background: transparent; color: var(--color-text); border: 1.5px solid var(--color-border); }
 .landing-section .landing-btn-ghost:hover { border-color: var(--color-accent); color: var(--color-accent); background: transparent; }
 
-/* Shared section layout */
 .landing-section { max-width: 1160px; margin: 0 auto; padding: clamp(48px, 7vw, 88px) clamp(20px, 5vw, 64px); }
 .landing-section-head { max-width: 640px; margin: 0 auto 36px; text-align: center; display: grid; gap: 10px; }
 .landing-section-head h2 { margin: 0; font-size: clamp(1.6rem, 3.5vw, 2.4rem); letter-spacing: -.02em; }
 .landing-section-head p { margin: 0; color: var(--color-text-secondary); }
 
-/* Feature grid */
 .landing-feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 18px; }
 .landing-feature-card { padding: 24px; border-radius: var(--radius-md); background: var(--color-surface); border: 1px solid var(--color-border); box-shadow: var(--shadow-sm); display: grid; gap: 10px; }
 .landing-feature-icon { width: 46px; height: 46px; border-radius: var(--radius-sm); display: grid; place-items: center; color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
 .landing-feature-card h3 { margin: 0; font-size: 1.05rem; }
 .landing-feature-card p { margin: 0; color: var(--color-text-secondary); font-size: .9rem; line-height: 1.5; }
 
-/* Two-audience split */
 .landing-split-wrap { background: var(--color-bg-muted); }
 .landing-split { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .landing-split-col { padding: 32px; border-radius: var(--radius-md); background: var(--color-surface); border: 1px solid var(--color-border); box-shadow: var(--shadow-sm); display: grid; gap: 14px; align-content: start; }
@@ -58,13 +52,11 @@
 .landing-split-col li span.tick { flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; background: color-mix(in srgb, var(--color-accent) 16%, transparent); color: var(--color-accent); display: grid; place-items: center; font-size: .72rem; font-weight: 900; margin-top: 1px; }
 .landing-split-col .landing-btn { justify-self: start; margin-top: 4px; }
 
-/* Final CTA band */
 .landing-cta-band { background: var(--brand-gradient); color: #fff; text-align: center; padding: clamp(44px, 7vw, 76px) clamp(20px, 5vw, 64px); }
 .landing-cta-band h2 { margin: 0 0 10px; font-size: clamp(1.5rem, 3.5vw, 2.2rem); }
 .landing-cta-band p { margin: 0 0 22px; color: rgba(255,255,255,.9); }
 .landing-cta-band .landing-hero-actions { margin-top: 0; }
 
-/* Footer */
 .landing-footer { background: var(--color-surface); border-top: 1px solid var(--color-border); padding: 44px clamp(20px, 5vw, 64px) 26px; }
 .landing-footer-top { max-width: 1160px; margin: 0 auto; display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 32px; padding-bottom: 28px; border-bottom: 1px solid var(--color-border); }
 .landing-footer-brand p { margin: 8px 0 0; color: var(--color-text-secondary); font-size: .88rem; max-width: 32ch; }

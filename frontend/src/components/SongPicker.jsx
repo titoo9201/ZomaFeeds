@@ -13,8 +13,6 @@ const formatTime = seconds => {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
-// JioSaavn doesn't expose real amplitude data, so the waveform is a stylized (fake) one —
-// seeded by the song's id/title so it looks stable per song instead of reshuffling on re-render.
 const seededBars = (seed, count) => {
   let value = Array.from(String(seed || 'song')).reduce((sum, ch) => sum + ch.charCodeAt(0), 7)
   const bars = []
@@ -45,9 +43,6 @@ const SongPicker = ({ selectedSong, onSelect, onRemove, videoDuration }) => {
     let cancelled = false
     const searchTerm = query.trim()
 
-    // Our backend (and the song API it proxies to) run on free hosting tiers that spin down
-    // after inactivity — the first request after a while can 502/fail while it wakes up, so
-    // retry once after a short wait instead of surfacing that as a hard error immediately.
     const runSearch = attempt => {
       setIsSearching(true)
       setError('')
@@ -86,8 +81,6 @@ const SongPicker = ({ selectedSong, onSelect, onRemove, videoDuration }) => {
     setPlayingId(song.id)
   }
 
-  // A clip can never outlast the reel it plays behind — cap the max by the video's own length
-  // (once known) on top of the song's own length and the 30s ceiling.
   const maxClipForSong = song => {
     const candidates = [MAX_CLIP]
     if (song?.duration) candidates.push(Math.floor(song.duration))
@@ -130,8 +123,6 @@ const SongPicker = ({ selectedSong, onSelect, onRemove, videoDuration }) => {
     playClipRange(trimming, nextStart, nextDuration)
   }
 
-  // Drag (or tap) anywhere on the waveform to slide the highlighted window — Instagram-style —
-  // then it auto-plays exactly that slice once you let go.
   const beginDrag = event => {
     const track = trackRef.current
     if (!track || !trimming) return

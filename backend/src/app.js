@@ -1,4 +1,3 @@
-// create server
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const authRoutes = require('./routes/auth.routes');

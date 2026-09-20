@@ -8,11 +8,11 @@ const imagekit = new ImageKit({
 
 async function uploadFile(file, fileName) {
     const result = await imagekit.upload({
-        file: file, // required
-        fileName: fileName, // required
+        file: file,
+        fileName: fileName,
     })
 
-    return result; // Return the URL of the uploaded file
+    return result;
 }
 
 module.exports = {

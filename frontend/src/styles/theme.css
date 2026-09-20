@@ -1,6 +1,5 @@
 :root {
   color-scheme: light;
-  /* Palette pulled from the ZomaFeeds logo: warm coral-red-pink-purple mark on a cream ground */
   --brand-primary: #E23744;
   --brand-secondary: #C13584;
   --brand-gradient: linear-gradient(135deg, #F56A4C, #E23744, #C13584, #833AB4);
@@ -42,7 +41,6 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  /* Same warm brand hues, on a soft charcoal-maroon ground instead of flat/harsh black-gray */
   --brand-primary: #FF5A66;
   --brand-secondary: #E0559C;
   --brand-gradient: linear-gradient(135deg, #FF8A5C, #FF5A66, #E0559C, #9B4FC9);
@@ -87,6 +85,5 @@ a { color: var(--color-accent); text-decoration: none; }
 a:hover, a:focus-visible { color: var(--color-accent-hover); }
 ::selection { background: var(--color-accent); color: var(--color-reel-text); }
 
-/* Shared utilities used across pages */
 .eyebrow { color: var(--color-accent); text-transform: uppercase; font-size: .72rem; font-weight: 800; letter-spacing: .14em; }
 button:disabled { cursor: wait; opacity: .65; }

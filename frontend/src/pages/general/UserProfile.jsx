@@ -49,7 +49,7 @@ const UserProfile = () => {
 
   const markNotificationRead = async notificationId => {
     setNotifications(previous => previous.map(item => item._id === notificationId ? { ...item, read: true } : item))
-    try { await api.patch(`/api/notifications/${notificationId}/read`) } catch { /* best-effort */ }
+    try { await api.patch(`/api/notifications/${notificationId}/read`) } catch (err) { void err }
   }
 
   const startEditing = () => {

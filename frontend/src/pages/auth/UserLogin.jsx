@@ -27,7 +27,7 @@ const UserLogin = () => {
         otp
       });
 
-      navigate("/home"); // Navigate only on success
+      navigate("/home");
     } catch (error) {
       setError(error.response?.data?.message || 'Login failed. Please try again.');
     } finally {

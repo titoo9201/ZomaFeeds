@@ -38,8 +38,6 @@ const foodSchema = new mongoose.Schema({
             artist: String,
             image: String,
             url: String,
-            // Which slice of the track plays behind the reel, Instagram-style — clipDuration is
-            // clamped to 5-30s (a very short reel can't carry a longer clip than its own length).
             startTime: { type: Number, default: 0, min: 0 },
             clipDuration: { type: Number, default: 30, min: 5, max: 30 }
         },

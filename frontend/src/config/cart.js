@@ -11,11 +11,11 @@ export const getCartItem = () => {
 }
 
 export const setCartItem = item => {
-  try { window.localStorage.setItem(CART_KEY, JSON.stringify(item)) } catch { /* storage unavailable */ }
+  try { window.localStorage.setItem(CART_KEY, JSON.stringify(item)) } catch (err) { void err }
   window.dispatchEvent(new Event(CART_EVENT))
 }
 
 export const clearCartItem = () => {
-  try { window.localStorage.removeItem(CART_KEY) } catch { /* storage unavailable */ }
+  try { window.localStorage.removeItem(CART_KEY) } catch (err) { void err }
   window.dispatchEvent(new Event(CART_EVENT))
 }

@@ -1,10 +1,8 @@
 @import './theme.css';
 
-/* Layout container */
 .profile-page {
   max-width: 1100px;
   margin: 0 auto;
-  /* Top clears the fixed PageNav/ThemeToggle buttons; bottom clears the fixed BottomNav bar */
   padding: 56px var(--space-6) 112px;
   display: flex;
   flex-direction: column;
@@ -15,7 +13,6 @@
   .profile-page { padding: 64px 16px 104px; }
 }
 
-/* Header block */
 .profile-header {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -84,7 +81,6 @@
 
 .profile-info { display: grid; gap: var(--space-3); }
 
-/* Grid of videos (shared by the public restaurant profile and the partner dashboard) */
 .profile-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -117,7 +113,6 @@
 
 .profile-grid-order { display: inline-block; padding: 6px 12px; font-size: .72rem; }
 
-/* Responsive tweaks */
 @media (max-width: 900px) {
   .profile-meta { grid-template-columns: 96px 1fr; }
   .profile-avatar { width: 96px; height: 96px; }

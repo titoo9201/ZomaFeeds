@@ -1,6 +1,5 @@
 @import './theme.css';
 
-/* Container */
 .create-food-page {
   min-height: 100dvh;
   width: 100%;
@@ -22,7 +21,7 @@
 .create-food-card {
   width: 100%;
   min-width: 0;
-  max-width: 720px; /* mobile-first but centered card */
+  max-width: 720px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -37,7 +36,6 @@
 .create-food-title { font-size: 1.35rem; font-weight: 700; }
 .create-food-subtitle { color: var(--color-text-secondary); font-size: .95rem; }
 
-/* Form */
 .create-food-form { display: grid; gap: var(--space-5); min-width: 0; }
 @media (min-width: 960px) {
   .create-food-form { gap: var(--space-6); }
@@ -52,7 +50,6 @@
   color: var(--color-text-secondary);
 }
 
-/* Inputs */
 .field-group input[type="text"],
 .field-group input[type="file"],
 .field-group textarea,
@@ -79,7 +76,6 @@
 
 .small-note { font-size: .78rem; color: var(--color-text-secondary); }
 
-/* Custom file input */
 .file-input-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
 .file-dropzone {
@@ -139,7 +135,6 @@
 .btn-ghost.danger { color: var(--color-danger); }
 .btn-ghost.danger:hover { background: rgba(231, 76, 60, 0.12); }
 
-/* Video preview */
 .video-preview {
   width: 100%;
   max-width: 100%;
@@ -149,7 +144,6 @@
   background: var(--color-surface-alt);
   display: grid;
   place-items: center;
-  /* Prevent tall videos from stretching the card */
 }
 
 .video-preview-button { position: relative; display: block; width: 100%; padding: 0; overflow: hidden; border: 0; background: var(--color-surface-alt); cursor: pointer; }
@@ -166,7 +160,6 @@
   object-fit: contain;
 }
 
-/* Actions */
 .form-actions { display: flex; gap: var(--space-3); }
 
 .btn-primary {
@@ -187,7 +180,6 @@
 .btn-primary:active { transform: translateY(1px); }
 .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
 
-/* Responsive */
 @media (min-width: 768px) {
   .create-food-title { font-size: 1.6rem; }
 }
@@ -204,7 +196,6 @@
   .file-chip-actions { width: 100%; }
 }
 
-/* Smooth theme transitions */
 .create-food-card,
 .field-group input,
 .field-group textarea { transition: all .3s ease-in-out; }

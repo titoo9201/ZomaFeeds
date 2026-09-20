@@ -24,7 +24,6 @@ const foodPartnerSchema = new mongoose.Schema({
     },
     password: {
         type: String
-        // Optional: accounts created via OTP have no password until they set one.
     },
     profilePicture: {
         type: String

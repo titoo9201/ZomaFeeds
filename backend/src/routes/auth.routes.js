@@ -19,14 +19,10 @@ router.post('/otp/request', authController.requestOtp)
 router.get('/user/profile', authMiddleware.authUserMiddleware, authController.getUserProfile)
 router.patch('/user/profile', authMiddleware.authUserMiddleware, upload.single('profilePicture'), authController.updateUserProfile)
 
-// user auth APIs
 router.post('/user/register', upload.single('profilePicture'), authController.registerUser)
 router.post('/user/login', authController.loginUser)
 router.get('/user/logout', authController.logoutUser)
 
-
-
-// food partner auth APIs
 router.post('/food-partner/register', upload.single('profilePicture'), authController.registerFoodPartner)
 router.post('/food-partner/login', authController.loginFoodPartner)
 router.get('/food-partner/logout', authController.logoutFoodPartner)

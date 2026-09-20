@@ -29,9 +29,6 @@ const Guard = ({ role, children }) => {
     return children
 }
 
-// The pre-auth register/login pages are only meant to be reached by clicking through from the
-// landing page (or between each other), never by typing/bookmarking the URL directly — anyone
-// arriving without that in-app navigation state gets bounced back to the landing page.
 const InternalOnly = ({ children }) => {
     const location = useLocation()
     if (!location.state?.internal) return <Navigate to="/" replace />

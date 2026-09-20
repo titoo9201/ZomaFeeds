@@ -33,13 +33,12 @@ async function payOrder(req, res) {
     const { paymentMethod } = req.body;
     if (!['upi', 'card', 'cod'].includes(paymentMethod)) return res.status(400).json({ message: 'A valid payment method (upi, card, or cod) is required' });
     const paymentStatus = paymentMethod === 'cod' ? 'unpaid' : 'paid';
-    // Status stays 'pending' here: the restaurant still has to accept the order (see respondToOrder).
     const order = await orderModel.findOneAndUpdate({ _id: req.params.id, user: req.user._id }, { paymentMethod, paymentStatus }, { new: true }).populate(FOOD_POPULATE);
     if (!order) return res.status(404).json({ message: 'Order not found' });
     res.json({ order, message: paymentMethod === 'cod' ? 'Order placed for cash on delivery' : 'Dummy payment completed' });
 }
 
-const MAX_HISTORY_DAYS = 180; // ~6 months; older history is by request to support, not self-serve
+const MAX_HISTORY_DAYS = 180;
 
 async function getPartnerOrders(req, res) {
     const foodIds = (await foodModel.find({ foodPartner: req.foodPartner._id }).select('_id')).map(item => item._id);
@@ -50,7 +49,6 @@ async function getPartnerOrders(req, res) {
     const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
     const startOfYesterday = new Date(startOfToday); startOfYesterday.setDate(startOfYesterday.getDate() - 1);
     const startOfLast30Days = new Date(startOfToday); startOfLast30Days.setDate(startOfLast30Days.getDate() - 30);
-    // Stats always look back at least 30 days regardless of the chosen history range, so pick the wider window to fetch once.
     const fetchFrom = new Date(startOfToday); fetchFrom.setDate(fetchFrom.getDate() - Math.max(rangeDays, 30));
 
     const orders = await orderModel.find({ food: { $in: foodIds }, paymentMethod: { $exists: true }, createdAt: { $gte: fetchFrom } })

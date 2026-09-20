@@ -33,7 +33,6 @@ const Home = () => {
 
   const isSearching = Boolean(debouncedSearch)
 
-  // Restaurants with more paid orders and more reviews rank higher in the default (non-search) grid.
   const partnerPopularity = useMemo(() => new Map(partners.map(partner => [partner._id, (partner.customersServed || 0) + (partner.reviewCount || 0)])), [partners])
 
   const filteredFoods = useMemo(() => foods.filter(food => {

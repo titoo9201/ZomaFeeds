@@ -1,6 +1,4 @@
 const SAAVN_API_BASE_URL = process.env.SAAVN_API_BASE_URL || 'https://jiosaavn-api-o119.onrender.com/api';
-// The Render free-tier instance sleeps after 15 min idle and can take 30-50s to cold-start,
-// so this timeout is well above a typical warm response but still bounded.
 const SEARCH_TIMEOUT_MS = 25000;
 
 function pickImage(images) {
