@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet
 import 'leaflet/dist/leaflet.css'
 import { RESTAURANT_ICON, CUSTOMER_ICON } from '../../config/mapIcons'
 import { distanceMeters } from '../../config/geo'
+import SwipeToConfirm from './SwipeToConfirm'
 import '../../styles/rider-flow.css'
 
 const AVG_SPEED_KMH = 20
@@ -56,7 +57,7 @@ const NewOrderCard = ({ order, riderPos, onAccept, onDeny, isAccepting }) => {
         {etaMinutes != null && <p className="new-order-eta">🕒 {etaMinutes} min{etaMinutes > 1 ? 's' : ''} away</p>}
       </div>
 
-      <button type="button" className="new-order-accept" onClick={onAccept} disabled={isAccepting}>{isAccepting ? 'Accepting...' : '» Accept order'}</button>
+      <SwipeToConfirm label="Swipe to accept order" confirmingLabel="Accepting..." onConfirm={onAccept} isConfirming={isAccepting} />
     </div>
   </div>
 }

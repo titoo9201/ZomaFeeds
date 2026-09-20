@@ -5,6 +5,7 @@ import api from '../../config/api'
 import MapRecenter from '../MapRecenter'
 import { RESTAURANT_ICON, makeRiderIcon, CUSTOMER_ICON } from '../../config/mapIcons'
 import { useSmoothMarker } from '../../hooks/useSmoothMarker'
+import SwipeToConfirm from './SwipeToConfirm'
 import '../../styles/rider-flow.css'
 
 const RiderReachScreen = ({ order, riderPos: riderFix, mode, onReached }) => {
@@ -62,7 +63,7 @@ const RiderReachScreen = ({ order, riderPos: riderFix, mode, onReached }) => {
           <span>Order: {String(order._id).slice(-10)}</span>
           {isPickup ? <span>· Customer: {order.user?.fullName || 'Customer'}</span> : <span>· Pickup: {order.food?.foodPartner?.name}</span>}
         </div>
-        <button type="button" className="flow-action-btn" onClick={onReached}>Reached {isPickup ? 'pickup' : 'drop'} location</button>
+        <SwipeToConfirm label={`Swipe — reached ${isPickup ? 'pickup' : 'drop'} location`} onConfirm={onReached} />
       </div>
     </div>
   </div>

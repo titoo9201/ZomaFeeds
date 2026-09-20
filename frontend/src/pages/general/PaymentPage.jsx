@@ -15,7 +15,6 @@ const PaymentPage = () => {
   const [order, setOrder] = useState(null)
   const [message, setMessage] = useState('')
   const [isLoading, setIsLoading] = useState(true)
-  const [isConfirmingCash, setIsConfirmingCash] = useState(false)
   const [showReviewPrompt, setShowReviewPrompt] = useState(true)
   const navigate = useNavigate()
 
@@ -36,24 +35,18 @@ const PaymentPage = () => {
     if (!socket.connected) socket.connect()
     socket.emit('join_order', order._id)
     const onUpdate = updatedOrder => setOrder(updatedOrder)
+    // Purpose-built event fired the instant the rider marks the order delivered — reacted to
+    // separately from the generic order:updated so the transition off the live map into the
+    // rating screen happens immediately, not on the next incidental status refresh.
+    const onDelivered = updatedOrder => setOrder(updatedOrder)
     socket.on('order:updated', onUpdate)
+    socket.on('order:delivered', onDelivered)
     return () => {
       socket.off('order:updated', onUpdate)
+      socket.off('order:delivered', onDelivered)
       socket.emit('leave_order', order._id)
     }
   }, [order?._id])
-
-  const confirmCash = async () => {
-    try {
-      setIsConfirmingCash(true)
-      const { data } = await api.patch(`/api/orders/${orderId}/confirm-cod`)
-      setOrder(data.order)
-    } catch (requestError) {
-      setMessage(requestError.response?.data?.message || 'Could not confirm payment.')
-    } finally {
-      setIsConfirmingCash(false)
-    }
-  }
 
   const isRejected = order?.status === 'cancelled'
   const isDelivered = order?.status === 'delivered'
@@ -91,7 +84,7 @@ const PaymentPage = () => {
 
       {isActive && <section className="checkout-card">
         {hasRiderAssigned
-          ? <RiderTrackingMap order={order} onConfirmCash={confirmCash} isConfirmingCash={isConfirmingCash} />
+          ? <RiderTrackingMap order={order} />
           : <OrderRouteMap pickupLocation={order.pickupLocation} dropLocation={order.dropLocation} />}
       </section>}
 

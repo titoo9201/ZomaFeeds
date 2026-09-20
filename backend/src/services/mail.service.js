@@ -96,6 +96,7 @@ function billTable(order) {
             ${row('Delivery fee', `₹${order.deliveryFee || 0}`)}
             ${b.platformFee != null ? row('Platform fee', `₹${b.platformFee}`) : ''}
             ${b.serviceGST != null ? row('GST on fees', `₹${b.serviceGST}`) : ''}
+            ${b.roundOff ? row('Round off (cash on delivery)', `${b.roundOff > 0 ? '+' : ''}₹${b.roundOff}`) : ''}
             <tr><td style="padding:8px 0;color:${TEXT_MUTED};font-size:14px;">Payment method</td><td style="padding:8px 0;text-align:right;color:${TEXT_MAIN};font-size:14px;">${(order.paymentMethod || '').toUpperCase()}</td></tr>
             <tr><td style="padding:8px 0;color:${TEXT_MUTED};font-size:14px;">Payment status</td><td style="padding:8px 0;text-align:right;color:${TEXT_MAIN};font-size:14px;text-transform:capitalize;">${order.paymentStatus}</td></tr>
             <tr><td style="padding:14px 0 0;font-weight:800;font-size:16px;color:${TEXT_MAIN};border-top:1px solid #EEDCDA;">Grand Total</td><td style="padding:14px 0 0;text-align:right;font-weight:800;font-size:16px;color:#E23744;border-top:1px solid #EEDCDA;">₹${order.total}</td></tr>
@@ -137,7 +138,8 @@ async function sendOrderDeliveredEmail(email, order) {
     const foodName = order.food?.name || 'Your food';
     const bodyHtml = `
         ${paragraph('Your order has been delivered successfully! 🎉')}
-        ${paragraph(`We hope you enjoy <strong>${foodName}</strong>. If you liked it, don't forget to leave a rating on the app — it helps the restaurant and other foodies.`)}
+        ${paragraph(`We hope you enjoy <strong>${foodName}</strong>. If you liked it, don't forget to rate the restaurant and your delivery partner on the app.`)}
+        ${billTable(order)}
         <p style="margin:0;color:#8A6B6E;font-size:12px;">This is a dummy checkout for testing — no real delivery took place.</p>
     `;
     await sendMail({

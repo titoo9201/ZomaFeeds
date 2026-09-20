@@ -1,9 +1,15 @@
 import { useState } from 'react'
 import api from '../config/api'
 
+const StarRow = ({ value, onChange, disabled }) => <div className="order-modal-stars">
+  {[1, 2, 3, 4, 5].map(star => <button key={star} type="button" className={star <= value ? 'is-filled' : ''} onClick={() => onChange(star)} disabled={disabled} aria-label={`${star} star${star > 1 ? 's' : ''}`}>★</button>)}
+</div>
+
 const OrderConfirmModal = ({ order, onDone, heading = 'Order confirmed!', message }) => {
   const [rating, setRating] = useState(0)
   const [text, setText] = useState('')
+  const [foodPartnerRating, setFoodPartnerRating] = useState(0)
+  const [riderRating, setRiderRating] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [submitted, setSubmitted] = useState(false)
@@ -18,7 +24,15 @@ const OrderConfirmModal = ({ order, onDone, heading = 'Order confirmed!', messag
     try {
       setIsSubmitting(true)
       setError('')
-      await api.post('/api/reviews', { food: order.food._id, rating, text })
+      await Promise.all([
+        api.post('/api/reviews', { food: order.food._id, rating, text }),
+        (foodPartnerRating || riderRating)
+          ? api.patch(`/api/orders/${order._id}/rate`, {
+            ...(foodPartnerRating ? { foodPartnerRating } : {}),
+            ...(riderRating ? { riderRating } : {})
+          })
+          : Promise.resolve()
+      ])
       setSubmitted(true)
     } catch (requestError) {
       setError(requestError.response?.data?.message || 'Could not save your review.')
@@ -35,10 +49,17 @@ const OrderConfirmModal = ({ order, onDone, heading = 'Order confirmed!', messag
 
       {!submitted && <form className="order-modal-review" onSubmit={submitReview}>
         <h3>Rate {foodName}</h3>
-        <div className="order-modal-stars">
-          {[1, 2, 3, 4, 5].map(star => <button key={star} type="button" className={star <= rating ? 'is-filled' : ''} onClick={() => setRating(star)} aria-label={`${star} star${star > 1 ? 's' : ''}`}>★</button>)}
-        </div>
+        <StarRow value={rating} onChange={setRating} disabled={isSubmitting} />
         <textarea value={text} onChange={event => setText(event.target.value)} placeholder="Tell us what you thought (optional) — the restaurant will see this" />
+
+        <h3>Rate {restaurantName}</h3>
+        <StarRow value={foodPartnerRating} onChange={setFoodPartnerRating} disabled={isSubmitting} />
+
+        {order.rider && <>
+          <h3>Rate your delivery partner{order.rider.name ? `, ${order.rider.name}` : ''}</h3>
+          <StarRow value={riderRating} onChange={setRiderRating} disabled={isSubmitting} />
+        </>}
+
         {error && <p className="error-text" role="alert">{error}</p>}
         <div className="order-modal-actions">
           <button type="button" className="order-modal-ghost" onClick={onDone}>Skip for now</button>

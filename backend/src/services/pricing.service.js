@@ -23,7 +23,18 @@ function computeBill(itemsTotal, deliveryFee, packagingCharge = 0) {
     const platformFee = PLATFORM_FEE;
     const serviceGST = Number(((deliveryFee + platformFee) * SERVICE_GST_RATE).toFixed(2));
     const grandTotal = Number((itemsTotal + restaurantGST + packagingCharge + deliveryFee + platformFee + serviceGST).toFixed(2));
-    return { itemsTotal, restaurantGST, packagingCharge, deliveryFee, platformFee, serviceGST, grandTotal };
+    return { itemsTotal, restaurantGST, packagingCharge, deliveryFee, platformFee, serviceGST, grandTotal, roundOff: 0 };
 }
 
-module.exports = { calculateDeliveryFee, computeBill, MAX_DELIVERY_RANGE_KM };
+// Cash on delivery is settled in physical currency, so the payable amount has to be a whole
+// rupee — paise can't practically change hands. Rounds only the final grand total (the actual
+// line items — GST, fees — stay precise for accounting) and records the adjustment as its own
+// "round off" entry, the same convention Zomato/Swiggy use, instead of silently absorbing it.
+// UPI/Card payments are untouched and keep the precise decimal total.
+function applyCodRounding(bill) {
+    const roundedTotal = Math.round(bill.grandTotal);
+    const roundOff = Number((roundedTotal - bill.grandTotal).toFixed(2));
+    return { ...bill, grandTotal: roundedTotal, roundOff };
+}
+
+module.exports = { calculateDeliveryFee, computeBill, applyCodRounding, MAX_DELIVERY_RANGE_KM };

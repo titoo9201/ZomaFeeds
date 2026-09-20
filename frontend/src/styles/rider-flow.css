@@ -19,8 +19,10 @@
 .new-order-pickup-name { font-size: 1.05rem; font-weight: 800; margin: 0 0 4px; }
 .new-order-pickup-address { font-size: .82rem; color: rgba(255,255,255,.6); margin: 0; }
 .new-order-eta { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: .8rem; color: rgba(255,255,255,.55); }
-.new-order-accept { margin-top: auto; border: 0; border-radius: 999px; padding: 16px; background: #22c55e; color: #fff; font-weight: 800; font-size: 1rem; cursor: pointer; }
-.new-order-accept:disabled { opacity: .6; cursor: wait; }
+/* This card is always dark regardless of the site's light/dark theme, so the swipe control
+   needs its own fixed-dark styling instead of the theme-variable defaults. */
+.new-order-card .swipe-confirm { margin-top: auto; background: #1e2530; border-color: rgba(255,255,255,.14); }
+.new-order-card .swipe-confirm-label { color: #fff; }
 
 /* Reach + order screens (light) */
 .flow-screen { min-height: 100dvh; display: flex; flex-direction: column; background: var(--color-bg); }
@@ -34,8 +36,6 @@
 .flow-contact-actions a { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px; border-radius: 10px; font-weight: 700; font-size: .88rem; text-decoration: none; border: 1px solid var(--color-border); color: var(--color-text); }
 .flow-contact-actions a.is-primary { background: var(--color-accent); color: #fff; border-color: transparent; }
 .flow-meta-row { display: flex; align-items: center; gap: 8px; color: var(--color-text-secondary); font-size: .82rem; }
-.flow-action-btn { border: 0; border-radius: 999px; padding: 16px; background: #22c55e; color: #fff; font-weight: 800; font-size: 1rem; cursor: pointer; }
-.flow-action-btn:disabled { opacity: .6; cursor: not-allowed; }
 
 .flow-eta-badge { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 10px; background: color-mix(in srgb, var(--color-accent) 10%, transparent); color: var(--color-accent); font-weight: 700; font-size: .85rem; justify-self: start; }
 .flow-order-id { text-align: center; color: var(--color-text-secondary); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; }
@@ -46,3 +46,17 @@
 .flow-collapsible-body { padding: 0 16px 14px; color: var(--color-text-secondary); font-size: .88rem; display: grid; gap: 4px; }
 
 .flow-badge { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border-radius: 10px; background: color-mix(in srgb, #22c55e 12%, transparent); color: #16a34a; font-weight: 700; font-size: .85rem; justify-self: start; }
+
+.flow-cod-banner { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-radius: 12px; background: color-mix(in srgb, #f59e0b 14%, transparent); border: 1px solid color-mix(in srgb, #f59e0b 40%, transparent); }
+.flow-cod-banner span { font-weight: 700; font-size: .88rem; color: var(--color-text); }
+.flow-cod-banner strong { font-size: 1.3rem; color: #b45309; }
+
+/* Swipe-to-confirm slider — used for the rider's critical, one-way actions instead of a plain
+   tap button, so an accidental brush of the screen can't accept/complete a delivery by mistake. */
+.swipe-confirm { position: relative; height: 58px; border-radius: 999px; background: var(--color-surface); border: 1px solid var(--color-border); overflow: hidden; touch-action: none; user-select: none; }
+.swipe-confirm.is-disabled { opacity: .55; }
+.swipe-confirm-fill { position: absolute; inset: 0 auto 0 0; background: #22c55e; border-radius: 999px; pointer-events: none; }
+.swipe-confirm-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 800; color: var(--color-text); pointer-events: none; }
+.swipe-confirm-thumb { position: absolute; left: 4px; top: 4px; width: 50px; height: 50px; border-radius: 50%; background: #16a34a; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 800; cursor: grab; z-index: 2; box-shadow: 0 2px 8px rgba(0,0,0,.25); touch-action: none; }
+.swipe-confirm.is-locked .swipe-confirm-thumb { cursor: not-allowed; }
+.swipe-confirm-thumb:active { cursor: grabbing; }

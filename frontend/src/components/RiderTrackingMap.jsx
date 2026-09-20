@@ -5,11 +5,12 @@ import api from '../config/api'
 import socket from '../config/socket'
 import MapRecenter from './MapRecenter'
 import { RESTAURANT_ICON, makeRiderIcon, CUSTOMER_ICON } from '../config/mapIcons'
-import { distanceMeters, ARRIVAL_THRESHOLD_METERS } from '../config/geo'
 import { useSmoothMarker } from '../hooks/useSmoothMarker'
 import '../styles/riderMap.css'
 
-const RiderTrackingMap = ({ order, onConfirmCash, isConfirmingCash }) => {
+// Cash-on-delivery is confirmed by the rider now (tapping "Cash Collected & Mark Delivered" on
+// their own drop screen), not by the customer here — this map is a pure live-tracking view.
+const RiderTrackingMap = ({ order }) => {
   const [riderFix, setRiderFix] = useState(order.rider?.currentLocation || null)
   const [route, setRoute] = useState(null)
   const [eta, setEta] = useState(null)
@@ -45,7 +46,6 @@ const RiderTrackingMap = ({ order, onConfirmCash, isConfirmingCash }) => {
 
   const destination = order.riderStatus === 'assigned' ? order.pickupLocation : order.dropLocation
   const destinationIcon = order.riderStatus === 'assigned' ? RESTAURANT_ICON : CUSTOMER_ICON
-  const canConfirmCash = order.paymentMethod === 'cod' && order.paymentStatus !== 'paid' && order.riderStatus === 'out_for_delivery' && distanceMeters(riderFix, order.dropLocation) <= ARRIVAL_THRESHOLD_METERS
 
   return <div className="rider-map-wrap">
     <MapContainer center={[riderPos.lat, riderPos.lng]} zoom={14} scrollWheelZoom={false} className="rider-map">
@@ -56,7 +56,6 @@ const RiderTrackingMap = ({ order, onConfirmCash, isConfirmingCash }) => {
       {route && <Polyline positions={route} color="#E23744" weight={4} />}
     </MapContainer>
     {eta != null && <p className="rider-map-eta">Estimated arrival: <strong>{eta} min</strong></p>}
-    {canConfirmCash && <button type="button" className="rider-action-btn" onClick={onConfirmCash} disabled={isConfirmingCash}>{isConfirmingCash ? 'Confirming...' : `I've paid ₹${order.total} in cash`}</button>}
   </div>
 }
 

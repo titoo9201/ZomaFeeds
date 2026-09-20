@@ -38,7 +38,7 @@ const OrderPage = () => {
     let cancelled = false
     setIsQuoting(true)
     setQuoteError('')
-    api.post('/api/orders/quote', { food: foodId, quantity: 1, address: selectedAddress.address, lat: selectedAddress.lat, lng: selectedAddress.lng }).then(({ data }) => {
+    api.post('/api/orders/quote', { food: foodId, quantity: 1, address: selectedAddress.address, lat: selectedAddress.lat, lng: selectedAddress.lng, paymentMethod: selectedPayment.method }).then(({ data }) => {
       if (cancelled) return
       setDeliveryQuote({ deliveryFee: data.bill.deliveryFee, distanceKm: data.bill.distanceKm, packagingCharge: data.bill.packagingCharge || 0 })
     }).catch(error => {
@@ -47,6 +47,7 @@ const OrderPage = () => {
       setQuoteError(error.response?.data?.message || 'Could not calculate the delivery fee for this address.')
     }).finally(() => { if (!cancelled) setIsQuoting(false) })
     return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAddress, foodId, food])
 
   const unitPrice = food?.price ?? 1
@@ -58,8 +59,14 @@ const OrderPage = () => {
     const { deliveryFee, distanceKm, packagingCharge } = deliveryQuote
     const restaurantGST = Number((itemsTotal * RESTAURANT_GST_RATE).toFixed(2))
     const serviceGST = Number(((deliveryFee + PLATFORM_FEE) * SERVICE_GST_RATE).toFixed(2))
-    const grandTotal = Number((itemsTotal + restaurantGST + packagingCharge + deliveryFee + PLATFORM_FEE + serviceGST).toFixed(2))
-    return { itemsTotal, restaurantGST, packagingCharge, deliveryFee, distanceKm, platformFee: PLATFORM_FEE, serviceGST, grandTotal }
+    const preciseTotal = Number((itemsTotal + restaurantGST + packagingCharge + deliveryFee + PLATFORM_FEE + serviceGST).toFixed(2))
+    // Cash on delivery is settled in physical currency — round to a whole rupee so the amount
+    // the customer actually hands over is a number they can pay, matching what the server
+    // stores once payment is confirmed. UPI/Card keep the precise decimal total.
+    const isCod = selectedPayment.method === 'cod'
+    const grandTotal = isCod ? Math.round(preciseTotal) : preciseTotal
+    const roundOff = isCod ? Number((grandTotal - preciseTotal).toFixed(2)) : 0
+    return { itemsTotal, restaurantGST, packagingCharge, deliveryFee, distanceKm, platformFee: PLATFORM_FEE, serviceGST, roundOff, grandTotal }
   })() : null
 
   const placeOrder = async () => {
@@ -136,6 +143,7 @@ const OrderPage = () => {
               : bill && <div className="checkout-bill-row"><span>Delivery fee{bill.distanceKm != null ? ` (${bill.distanceKm} km)` : ''}</span><span>₹{bill.deliveryFee}</span></div>}
         <div className="checkout-bill-row"><span>Platform fee</span><span>₹{PLATFORM_FEE}</span></div>
         {bill && <div className="checkout-bill-row"><span>GST on fees</span><span>₹{bill.serviceGST}</span></div>}
+        {bill && bill.roundOff !== 0 && <div className="checkout-bill-row"><span>Round off (cash on delivery)</span><span>{bill.roundOff > 0 ? '+' : ''}₹{bill.roundOff}</span></div>}
         <div className="checkout-bill-row checkout-bill-total"><span>Grand total</span><span>₹{bill ? bill.grandTotal : '—'}</span></div>
         <p className="checkout-note">No real money is ever charged — this is a dummy checkout for testing.</p>
       </section>

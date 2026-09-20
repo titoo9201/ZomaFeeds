@@ -12,7 +12,7 @@ router.get('/rider/active', auth.authRiderMiddleware, controller.getActiveRiderO
 router.get('/:id', auth.authUserMiddleware, controller.getOrder);
 router.get('/:id/route', auth.authAnyMiddleware, controller.getOrderRoute);
 router.patch('/:id/pay', auth.authUserMiddleware, controller.payOrder);
-router.patch('/:id/confirm-cod', auth.authUserMiddleware, controller.confirmCodPayment);
+router.patch('/:id/rate', auth.authUserMiddleware, controller.rateOrder);
 router.patch('/:id/respond', auth.authFoodPartnerMiddleware, controller.respondToOrder);
 router.patch('/:id/advance', auth.authFoodPartnerMiddleware, controller.advanceOrderStatus);
 router.patch('/:id/accept-delivery', auth.authRiderMiddleware, controller.acceptDelivery);

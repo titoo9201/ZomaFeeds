@@ -71,10 +71,10 @@ Everything — auth, media storage, email, real-time location, routing, geocodin
 | 🏠💌 | **Labelled address book** — save multiple delivery addresses (Home, Girlfriend, Boyfriend, Friend, Relative, Other), each set from your live GPS location *or* a pasted Google Maps link, confirmed on a draggable-pin map (Street/Satellite toggle) before it's saved. Pasting a link to a named place pre-fills a plain, freely-editable address text box (e.g. to add your flat/shop number) — that text is never geocoded, only shown to the restaurant/rider; the actual location always comes from the confirmed pin |
 | 🛒 | **Single-page Zomato-style checkout** — item + quantity stepper, an address-picker sheet and a payment-method sheet both surfaced from a sticky bottom bar, with a live bill preview *before* you place the order |
 | 🧾 | **Full itemised bill** — item total → restaurant GST (5%) → packaging charge (if the restaurant charges one) → distance-based delivery fee → platform fee → GST on fees (18%) → grand total. See [Bill breakdown](#-bill-breakdown) |
-| 💳 | **Dummy payment flow** — pay by UPI, Card, or Cash on Delivery (no real money ever moves); a COD order isn't marked "delivered" until you confirm in-app that you handed over the cash |
+| 💳 | **Dummy payment flow** — pay by UPI, Card, or Cash on Delivery (no real money ever moves); a COD total is rounded to a whole rupee (a "round off" line reconciles it) since paise can't practically change hands — UPI/Card stay precise. The rider confirms delivery *and* settles the cash in one action; there's no separate customer-side confirmation step |
 | 🛵🗺️ | **Live order tracking** — a real Leaflet/OpenStreetMap route from the moment the order is placed (pickup → drop preview), a rider marker that **glides and rotates to face the direction of travel** once a rider is assigned, restaurant/rider contact cards with one-tap `tel:` calling |
 | 🔗 | **A "Track" nav icon** that only appears while an order is actually in flight (same pattern as the cart icon), so the tracking screen is never more than one tap away — and disappears again once delivered |
-| 🌟 | **Post-delivery review prompt** — a 1–5 star review modal opens the moment your order is marked *delivered*, for both UPI and COD |
+| 🌟 | **Post-delivery rating screen** — the instant the rider marks an order delivered (`order:delivered`, live over Socket.IO), the tracking screen swaps straight to a rating prompt: a 1–5 star dish review (with optional text) plus separate 1–5 star ratings for the restaurant and the rider |
 | 🔔 | **"Notify me" for closed restaurants** — get an in-app notification the second they reopen, plus a notification when your rider picks up your food |
 | 🔑 | **Password *or* OTP auth** — register/log in with a password, or a 4-digit code emailed to you; works for all three roles |
 | 🔈 | **Reel sound control** — a reel plays its own audio by default; if the partner attached a song, the video mutes and the song plays instead, all behind one global mute toggle |
@@ -104,15 +104,17 @@ Everything — auth, media storage, email, real-time location, routing, geocodin
 
 | | |
 |---|---|
-| 🌙🌗 | **Rapido/Zomato-style delivery flow** — one full-screen step at a time instead of a list: **New order!** (dark theme, circular map, trip/pickup/drop distance breakdown, Accept/Deny) → **Reach pickup** (live map, call the restaurant, Navigate) → **Pick order** (order ID, item breakdown, collapsible restaurant/customer details) → **Reach drop** (live map, call the customer) → **Drop order** (payment-status badge, "Order delivered") |
+| 🌙🌗 | **Rapido/Zomato-style delivery flow** — one full-screen step at a time instead of a list: **New order!** (dark theme, circular map, trip/pickup/drop distance breakdown, Accept/Deny) → **Reach pickup** (live map, call the restaurant, Navigate) → **Pick order** (order ID, item breakdown, collapsible restaurant/customer details) → **Reach drop** (live map, call the customer) → **Drop order** ("Collect ₹X" banner for COD, "Mark as Delivered" otherwise) |
+| 👉 | **Swipe-to-confirm, not tap** — every critical, one-way rider action (accept an order, reached pickup/drop, mark delivered) is a left-to-right drag slider, not a plain button, so a stray tap can't accidentally trigger something irreversible |
 | 🧭 | **"Navigate" hands off to Google Maps** — a one-tap deep link (`google.com/maps/dir/?api=1&destination=…&travelmode=driving`) opens turn-by-turn driving directions in the Google Maps app (or a new tab on desktop), using the phone's own live GPS as the starting point; the in-app Leaflet map stays alongside it purely as an overview, not a replacement |
 | 📝 | **Readable pickup/delivery addresses right next to the Navigate button** — GPS gets a rider to the building, but not the exact door; the restaurant's and customer's own text address (flat/shop number, landmark) is shown prominently on every step, not buried in a collapsed section |
 | 🛰️ | **Real GPS tracking** — `navigator.geolocation.watchPosition`, throttled to the server every 15s (plus an immediate first fix), broadcast live over Socket.IO to the customer's tracking screen |
 | 🧭 | **Direction-aware marker** — the bike icon computes its bearing from the last GPS fix (`atan2`) and rotates to face the way the rider is actually moving, while the marker itself glides smoothly (`requestAnimationFrame` tween) instead of snapping between fixes |
-| 🔒 | **Proximity-gated actions** — "Delivered" only unlocks once the rider's live location is within ~200m of the drop point; for Cash on Delivery, it stays locked until the *customer* confirms the cash handover from their own tracking screen |
+| 🔒 | **Proximity-gated, rider-confirmed actions** — "Delivered" only unlocks once the rider's live location is within ~200m of the drop point. For Cash on Delivery, the rider swipes "Cash Collected & Mark Delivered" — one action both completes the delivery and settles the payment; there's no separate customer-side confirmation step |
 | 🖼️ | **Profile picture, phone & vehicle number** — visible to the customer on their tracking screen, with a one-tap `tel:` call button |
 | 💰 | **Today / Yesterday / Past earnings** — the same three-bucket stat-card pattern as the restaurant dashboard, driven by the actual distance-based delivery fee earned per completed delivery |
 | 🚫 | **Distance-slab delivery pricing built in** — ₹20 (0–3 km) / ₹30 (3–7 km) / ₹40 (7–15 km), capped by the platform-wide 15km limit; an address that's genuinely out of range is rejected *before* a rider ever sees it |
+| 💵 | **COD collection is a whole rupee** — cash orders round the grand total (the itemised GST/fees stay precise; a "round off" line reconciles the difference), so what the rider actually collects is a number that can be paid in physical cash |
 
 ### 🛠️ Under the hood
 
@@ -204,7 +206,7 @@ flowchart TD
 
     UserClient <-. "live rider location + order status" .-> Realtime
     RiderClient -. "rider:location, join_order" .-> Realtime
-    Realtime -. "order:updated, order:new, order:assigned" .-> API
+    Realtime -. "order:updated, order:delivered, order:new, order:assigned" .-> API
 
     AuthC --> DB
     FoodC --> DB
@@ -369,14 +371,10 @@ sequenceDiagram
     API-->>U: "out for delivery" email + live map update
     API-->>P: dashboard shows "Out for delivery with Rider X"
 
-    alt Cash on Delivery
-        U->>API: PATCH /api/orders/:id/confirm-cod (rider must be within ~200m)
-        API->>API: paymentStatus → paid
-    end
-
-    R->>API: PATCH /api/orders/:id/deliver (must be within ~200m of drop)
-    API->>API: status → delivered
-    API-->>U: "delivered" email + review prompt
+    R->>API: PATCH /api/orders/:id/deliver (swipe-to-confirm, rider must be within ~200m of drop)
+    API->>API: status → delivered; if Cash on Delivery, paymentStatus → paid — same single action, rider-confirmed
+    API-->>U: order:delivered socket event → live map replaced by the rating screen
+    API-->>U: "delivered" email (itemised receipt) + prompt to rate the restaurant and the rider
     API-->>P: dashboard shows delivered
 ```
 
@@ -432,7 +430,7 @@ flowchart LR
 
 ## 🧾 Bill breakdown
 
-Every order's `total` is the sum of six independently-stored fields, computed once, server-side, at order creation (`pricing.service.js`) — never trusted from the client:
+Every order's `total` is the sum of six independently-stored fields, computed server-side at order creation (`pricing.service.js`) — never trusted from the client. If Cash on Delivery is selected, one more adjustment is applied when the payment method is confirmed:
 
 | Component | How it's calculated | Who it belongs to |
 |---|---|---|
@@ -442,6 +440,7 @@ Every order's `total` is the sum of six independently-stored fields, computed on
 | **Delivery fee** | Distance slab: ₹20 (0–3km) / ₹30 (3–7km) / ₹40 (7–15km) | The rider (their entire earning per delivery) |
 | **Platform fee** | Flat ₹6 per order | ZomaFeeds |
 | **GST on fees** | 18% of (delivery fee + platform fee) | Passed through to tax |
+| **Round off** *(COD only)* | Grand total rounded to the nearest whole rupee — cash can't practically settle paise | Absorbed by the platform |
 
 A restaurant's dashboard revenue is its item-total share (not the customer's full bill); a rider's earnings dashboard sums exactly the delivery fee of every order they've completed. All three rate constants live in one place (`backend/src/config/pricingConfig.js`) so they can be tuned without touching the calculation logic.
 
@@ -475,7 +474,7 @@ ZomaFeeds/
         │   ├── food-partner/       # Dashboard, CreateFood, ManageFood, Profile
         │   └── rider/              # RiderDashboard, RiderProfile
         ├── components/
-        │   ├── rider/              # NewOrderCard, RiderReachScreen, RiderOrderScreen
+        │   ├── rider/              # NewOrderCard, RiderReachScreen, RiderOrderScreen, SwipeToConfirm
         │   ├── ReelFeed, SongPicker, PageNav, BottomNav, RiderBottomNav, OrderConfirmModal
         │   ├── AddressFields (GPS/Maps-link capture), SavedAddresses, AddressPickerSheet, PaymentMethodSheet, LocationPrompt
         │   └── RiderTrackingMap, OrderRouteMap, PinConfirmMap, MapRecenter
@@ -625,7 +624,7 @@ All protected routes read a JWT from an `httpOnly` cookie set at login. `user`, 
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| POST | `/quote` | user | Preview the full bill (incl. delivery fee) for a food + a confirmed `{lat, lng}`, without creating an order — no geocoding, coordinates are required |
+| POST | `/quote` | user | Preview the full bill (incl. delivery fee) for a food + a confirmed `{lat, lng}`, without creating an order — no geocoding, coordinates are required. Pass `paymentMethod: 'cod'` to preview the whole-rupee rounded total |
 | POST | `/` | user | Place an order — server computes and stores the full bill from the restaurant's stored location and the submitted `{lat, lng}` |
 | GET | `/my` | user | The user's order history |
 | GET | `/partner/incoming?days=` | foodPartner | Orders bucketed into Today/Yesterday/Past + stats, including rider info once assigned |
@@ -633,14 +632,14 @@ All protected routes read a JWT from an `httpOnly` cookie set at login. `user`, 
 | GET | `/rider/active` | rider | The rider's current in-progress delivery |
 | GET | `/:id` | user | A single order |
 | GET | `/:id/route` | user or rider | Live OSRM route + ETA from the rider's current location |
-| PATCH | `/:id/pay` | user | Dummy payment (UPI/Card/COD) |
-| PATCH | `/:id/confirm-cod` | user | Confirm a cash handover (requires the rider to be within ~200m) |
+| PATCH | `/:id/pay` | user | Dummy payment (UPI/Card/COD) — selecting COD rounds the stored total to a whole rupee and records the adjustment |
+| PATCH | `/:id/rate` | user | Rate the restaurant and/or the rider (1–5 each) for a delivered order — separate from the per-dish review |
 | PATCH | `/:id/respond` | foodPartner | Accept or reject a pending order |
 | PATCH | `/:id/advance` | foodPartner | Advance status one step (blocked once a rider has claimed the order) |
 | PATCH | `/:id/accept-delivery` | rider | Atomically claim an unassigned order |
 | PATCH | `/:id/pickup` | rider | Mark picked up from the restaurant |
 | PATCH | `/:id/start-delivery` | rider | Mark out for delivery |
-| PATCH | `/:id/deliver` | rider | Mark delivered (requires proximity + settled payment) |
+| PATCH | `/:id/deliver` | rider | Mark delivered (requires proximity to the drop point) — for COD, this same action also settles the payment; there's no separate customer-side confirmation step |
 
 </details>
 
@@ -706,6 +705,7 @@ All protected routes read a JWT from an `httpOnly` cookie set at login. `user`, 
 | `join_order` / `leave_order` | client → server | Join/leave the `order_<id>` room to receive live updates for one order |
 | `rider:location` | rider → server → order room | A rider's live GPS fix, relayed to whoever is tracking that order |
 | `order:updated` | server → order room | Full order document, sent on every status/payment change |
+| `order:delivered` | server → order room | Fired once, the instant the rider marks the order delivered — the customer's tracking screen reacts to this specifically to transition straight into the post-delivery rating screen |
 | `order:new` | server → `riders_lobby` | A freshly-accepted order is ready for pickup |
 | `order:assigned` | server → `riders_lobby` / specific rider | An order has just been claimed (removes it from other riders' lists) |
 

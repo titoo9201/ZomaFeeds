@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { distanceMeters, ARRIVAL_THRESHOLD_METERS } from '../../config/geo'
+import SwipeToConfirm from './SwipeToConfirm'
 import '../../styles/rider-flow.css'
 
 const Collapsible = ({ title, children, defaultOpen = false }) => {
@@ -20,14 +21,15 @@ const RiderOrderScreen = ({ order, riderPos, mode, onConfirm, isConfirming }) =>
   const dropMapsUrl = buildMapsUrl(order.dropLocation)
 
   const hasArrived = isPick || distanceMeters(riderPos, order.dropLocation) <= ARRIVAL_THRESHOLD_METERS
-  const waitingForCash = !isPick && order.paymentMethod === 'cod' && order.paymentStatus !== 'paid'
-  const canConfirm = hasArrived && !waitingForCash
+  // The rider confirms cash collection directly now (Zomato/Swiggy pattern) — one tap both
+  // completes the delivery and settles the payment, instead of waiting on the customer.
+  const isCod = !isPick && order.paymentMethod === 'cod' && order.paymentStatus !== 'paid'
+  const canConfirm = hasArrived
 
-  const buttonLabel = isConfirming ? 'Updating...'
-    : isPick ? 'Picked order'
-      : waitingForCash ? 'Waiting for cash confirmation'
-        : !hasArrived ? 'Get to the customer'
-          : 'Order delivered'
+  const swipeLabel = isPick ? 'Swipe — picked order'
+    : !hasArrived ? 'Get to the customer'
+      : isCod ? 'Swipe — cash collected & delivered'
+        : 'Swipe to mark delivered'
 
   return <div className="rider-flow-overlay">
     <div className="flow-screen">
@@ -56,9 +58,9 @@ const RiderOrderScreen = ({ order, riderPos, mode, onConfirm, isConfirming }) =>
             </Collapsible>
           </>
           : <>
-            <span className="flow-badge">
-              {order.paymentMethod === 'cod' ? (order.paymentStatus === 'paid' ? '✓ Cash confirmed' : '⏳ Cash on delivery — awaiting confirmation') : '✓ Paid online'}
-            </span>
+            {isCod
+              ? <div className="flow-cod-banner"><span>Collect from customer</span><strong>₹{order.total}</strong></div>
+              : <span className="flow-badge">✓ Paid online</span>}
             <div>
               <h3 className="flow-contact-name">{order.user?.fullName || 'Customer'}</h3>
               <p className="flow-contact-address"><strong>Delivery address:</strong> {order.address}</p>
@@ -73,7 +75,7 @@ const RiderOrderScreen = ({ order, riderPos, mode, onConfirm, isConfirming }) =>
             </Collapsible>
           </>}
 
-        <button type="button" className="flow-action-btn" onClick={onConfirm} disabled={isConfirming || !canConfirm}>{buttonLabel}</button>
+        <SwipeToConfirm label={swipeLabel} confirmingLabel="Updating..." onConfirm={onConfirm} disabled={!canConfirm} isConfirming={isConfirming} />
       </div>
     </div>
   </div>

@@ -47,7 +47,15 @@ const orderSchema = new mongoose.Schema(
       packagingCharge: { type: Number, default: 0 },
       platformFee: { type: Number, default: 0 },
       serviceGST: { type: Number, default: 0 },
+      // Set only for COD — the difference between the precise total and the whole-rupee
+      // amount actually collected in cash. Zero/absent for UPI/Card, which stay precise.
+      roundOff: { type: Number, default: 0 },
     },
+    // Basic post-delivery ratings, separate from the per-dish review (food.reviewModel) —
+    // these rate the restaurant and the rider for this specific order. Kept simple for now;
+    // not yet aggregated into any stats.
+    foodPartnerRating: { type: Number, min: 1, max: 5 },
+    riderRating: { type: Number, min: 1, max: 5 },
   },
   { timestamps: true },
 );

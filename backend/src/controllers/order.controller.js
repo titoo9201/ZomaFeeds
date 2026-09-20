@@ -41,7 +41,7 @@ function deliveryQuoteErrorMessage() {
 
 async function quoteOrder(req, res) {
     try {
-        const { food, quantity, address, lat, lng } = req.body;
+        const { food, quantity, address, lat, lng, paymentMethod } = req.body;
         if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) return res.status(400).json({ message: 'A delivery location is required — select a saved address with a confirmed pin' });
         const foodItem = await foodModel.findById(food);
         if (!foodItem) return res.status(404).json({ message: 'Food not found' });
@@ -53,7 +53,10 @@ async function quoteOrder(req, res) {
         if (deliveryFee == null) return res.status(409).json({ message: deliveryQuoteErrorMessage() });
 
         const itemsTotal = Math.max(1, Number(quantity) || 1) * foodItem.price;
-        const bill = pricingService.computeBill(itemsTotal, deliveryFee, foodPartner.packagingCharge || 0);
+        let bill = pricingService.computeBill(itemsTotal, deliveryFee, foodPartner.packagingCharge || 0);
+        // COD is settled in cash — preview the whole-rupee amount the customer will actually
+        // pay, not a decimal figure nobody can hand over exactly.
+        if (paymentMethod === 'cod') bill = pricingService.applyCodRounding(bill);
         res.json({ bill: { ...bill, distanceKm } });
     } catch (error) {
         console.error('[quoteOrder] failed:', error);
@@ -109,9 +112,26 @@ async function getOrder(req, res) {
 async function payOrder(req, res) {
     const { paymentMethod } = req.body;
     if (!['upi', 'card', 'cod'].includes(paymentMethod)) return res.status(400).json({ message: 'A valid payment method (upi, card, or cod) is required' });
-    const paymentStatus = paymentMethod === 'cod' ? 'unpaid' : 'paid';
-    const order = await orderModel.findOneAndUpdate({ _id: req.params.id, user: req.user._id }, { paymentMethod, paymentStatus }, { new: true }).populate(FOOD_POPULATE);
+
+    const order = await orderModel.findOne({ _id: req.params.id, user: req.user._id });
     if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    order.paymentMethod = paymentMethod;
+    order.paymentStatus = paymentMethod === 'cod' ? 'unpaid' : 'paid';
+    // COD is settled in cash — round the stored total to a whole rupee (the amount the rider
+    // will actually collect) and record the adjustment, so the itemised bill still reconciles.
+    if (paymentMethod === 'cod') {
+        const rounded = pricingService.applyCodRounding({
+            itemsTotal: order.billBreakdown.itemsTotal, restaurantGST: order.billBreakdown.restaurantGST,
+            packagingCharge: order.billBreakdown.packagingCharge, deliveryFee: order.deliveryFee,
+            platformFee: order.billBreakdown.platformFee, serviceGST: order.billBreakdown.serviceGST,
+            grandTotal: order.total
+        });
+        order.total = rounded.grandTotal;
+        order.billBreakdown.roundOff = rounded.roundOff;
+    }
+    await order.save();
+    await order.populate(FOOD_POPULATE);
     res.json({ order, message: paymentMethod === 'cod' ? 'Order placed for cash on delivery' : 'Dummy payment completed' });
 }
 
@@ -298,18 +318,20 @@ async function pickupOrder(req, res) {
     }
 }
 
+// The rider is the one who confirms a COD delivery now (Zomato/Swiggy pattern) — tapping
+// "Cash Collected & Mark Delivered" both completes the delivery AND settles the payment in one
+// action, instead of waiting on a separate customer-side confirmation step.
 async function deliverOrder(req, res) {
     try {
         const order = await orderModel.findOne({ _id: req.params.id, rider: req.rider._id, riderStatus: 'out_for_delivery' });
         if (!order) return res.status(404).json({ message: 'Order not found or not out for delivery yet' });
-
-        if (order.paymentMethod === 'cod' && order.paymentStatus !== 'paid') return res.status(400).json({ message: 'Waiting for the customer to confirm the cash payment' });
 
         const distance = mapService.distanceMeters(req.rider.currentLocation, order.dropLocation);
         if (distance > mapService.ARRIVAL_THRESHOLD_METERS) return res.status(400).json({ message: "You need to be at the customer's location to complete delivery" });
 
         order.riderStatus = 'delivered';
         order.status = 'delivered';
+        if (order.paymentMethod === 'cod') order.paymentStatus = 'paid';
         await order.save();
 
         const deliveredOrder = await orderModel.findById(order._id).populate([FOOD_POPULATE, { path: 'user', select: 'email fullName' }]);
@@ -317,7 +339,13 @@ async function deliverOrder(req, res) {
         mailService.sendOrderDeliveredEmail(deliveredOrder.user.email, deliveredOrder).catch(error => console.error('[mail] delivered email failed:', error.message));
 
         const io = getIO();
-        if (io) io.to(`order_${order._id}`).emit('order:updated', deliveredOrder);
+        if (io) {
+            io.to(`order_${order._id}`).emit('order:updated', deliveredOrder);
+            // Purpose-built event so the customer's tracking screen can specifically react
+            // (transition off the live map, straight into the post-delivery rating screen)
+            // rather than treating this the same as any other in-flight status change.
+            io.to(`order_${order._id}`).emit('order:delivered', deliveredOrder);
+        }
 
         res.json({ order: deliveredOrder });
     } catch (error) {
@@ -326,28 +354,31 @@ async function deliverOrder(req, res) {
     }
 }
 
-async function confirmCodPayment(req, res) {
+// Basic post-delivery ratings for the restaurant and the rider (separate from the existing
+// per-dish review). Both fields are optional and independently settable; kept simple — no
+// aggregation into any stats yet, just recorded on the order itself.
+async function rateOrder(req, res) {
     try {
-        const order = await orderModel.findOne({ _id: req.params.id, user: req.user._id }).populate('rider', 'currentLocation');
+        const { foodPartnerRating, riderRating } = req.body;
+        const order = await orderModel.findOne({ _id: req.params.id, user: req.user._id });
         if (!order) return res.status(404).json({ message: 'Order not found' });
-        if (order.paymentMethod !== 'cod') return res.status(400).json({ message: 'This order is not cash on delivery' });
-        if (order.paymentStatus === 'paid') return res.status(400).json({ message: 'This order is already marked as paid' });
-        if (order.riderStatus !== 'out_for_delivery') return res.status(400).json({ message: 'Your delivery partner is not out for delivery yet' });
+        if (order.status !== 'delivered') return res.status(400).json({ message: 'You can only rate an order once it has been delivered' });
 
-        const distance = mapService.distanceMeters(order.rider?.currentLocation, order.dropLocation);
-        if (distance > mapService.ARRIVAL_THRESHOLD_METERS) return res.status(400).json({ message: "Your delivery partner hasn't arrived yet" });
-
-        order.paymentStatus = 'paid';
+        if (foodPartnerRating !== undefined) {
+            const rating = Number(foodPartnerRating);
+            if (!Number.isInteger(rating) || rating < 1 || rating > 5) return res.status(400).json({ message: 'Restaurant rating must be a whole number from 1 to 5' });
+            order.foodPartnerRating = rating;
+        }
+        if (riderRating !== undefined) {
+            const rating = Number(riderRating);
+            if (!Number.isInteger(rating) || rating < 1 || rating > 5) return res.status(400).json({ message: 'Rider rating must be a whole number from 1 to 5' });
+            order.riderRating = rating;
+        }
         await order.save();
-        await order.populate([FOOD_POPULATE, RIDER_POPULATE]);
-
-        const io = getIO();
-        if (io) io.to(`order_${order._id}`).emit('order:updated', order);
-
         res.json({ order });
     } catch (error) {
-        console.error('[confirmCodPayment] failed:', error);
-        res.status(500).json({ message: error.message || 'Could not confirm payment right now' });
+        console.error('[rateOrder] failed:', error);
+        res.status(500).json({ message: error.message || 'Could not save your rating' });
     }
 }
 
@@ -376,5 +407,5 @@ async function getOrderRoute(req, res) {
 module.exports = {
     createOrder, quoteOrder, getMyOrders, getOrder, payOrder, getPartnerOrders, respondToOrder, advanceOrderStatus,
     getAvailableOrders, getActiveRiderOrder, acceptDelivery, pickupOrder, startDelivery, deliverOrder,
-    confirmCodPayment, getOrderRoute
+    rateOrder, getOrderRoute
 };
