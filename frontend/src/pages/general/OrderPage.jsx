@@ -66,7 +66,7 @@ const OrderPage = () => {
         <div className="checkout-col">
           <section className="checkout-card">
             <div className="checkout-item">
-              <video className="checkout-item-thumb" src={food.video} muted loop playsInline preload="metadata" />
+              {food.mediaType === 'image' ? <img className="checkout-item-thumb" src={food.video} alt={food.name} /> : <video className="checkout-item-thumb" src={food.video} muted loop playsInline preload="metadata" />}
               <div className="checkout-item-info">
                 <strong>{food.name}</strong>
                 <span className="checkout-item-price">₹{unitPrice} each</span>

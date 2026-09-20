@@ -249,7 +249,7 @@ const IncomingOrderCard = ({ order, respondingId, rejectDraftId, rejectReason, o
 }
 
 const DashboardMenuItem = ({ video, onViewComments }) => <Link className="profile-grid-item" to={`/manage-food/${video._id}`}>
-  <video className="profile-grid-video" src={video.video} muted playsInline preload="metadata" />
+  {video.mediaType === 'image' ? <img className="profile-grid-video" src={video.video} alt={video.name} /> : <video className="profile-grid-video" src={video.video} muted playsInline preload="metadata" />}
   {!video.isAvailable && <span className="availability-badge">Unavailable</span>}
   <span className="reel-rating-badge">★ {video.averageRating || 0} <span>({video.reviewCount || 0})</span></span>
   <div className="profile-video-meta">

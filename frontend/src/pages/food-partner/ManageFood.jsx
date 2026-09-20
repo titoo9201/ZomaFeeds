@@ -77,7 +77,7 @@ const ManageFood = () => {
           <p className="create-food-subtitle">Update details, price, and availability for this reel.</p>
         </header>
 
-        <div className="manage-food-preview"><video ref={videoRef} src={food.video} muted controls onLoadedMetadata={() => setVideoDuration(videoRef.current?.duration || null)} /></div>
+        <div className="manage-food-preview">{food.mediaType === 'image' ? <img src={food.video} alt={food.name} /> : <video ref={videoRef} src={food.video} muted controls onLoadedMetadata={() => setVideoDuration(videoRef.current?.duration || null)} />}</div>
 
         <form className="create-food-form" onSubmit={save}>
           <div className="field-group">

@@ -9,6 +9,11 @@ const foodSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    mediaType: {
+        type: String,
+        enum: ['video', 'image'],
+        default: 'video'
+    },
     description: {
         type: String,
     },

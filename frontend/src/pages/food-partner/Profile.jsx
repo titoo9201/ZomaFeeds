@@ -141,13 +141,14 @@ const Profile = () => {
 const MenuGridItem = ({ video, canOrder }) => {
   const rating = <span className="reel-rating-badge">★ {video.averageRating || 0} <span>({video.reviewCount || 0})</span></span>
   const isOrderable = canOrder && video.isAvailable !== false
+  const thumb = video.mediaType === 'image' ? <img className="profile-grid-video" src={video.video} alt={video.name} /> : <video className="profile-grid-video" src={video.video} muted playsInline preload="metadata" />
   if (isOrderable) return <Link className="profile-grid-item profile-grid-item--orderable" to={`/order/${video._id}`}>
-    <video className="profile-grid-video" src={video.video} muted playsInline preload="metadata" />
+    {thumb}
     {rating}
     <div className="profile-video-meta"><div><strong>{video.name}</strong><small>₹{video.price ?? 1} · {video.category}</small></div><span className="reel-btn profile-grid-order">Order now</span></div>
   </Link>
   return <article className="profile-grid-item">
-    <video className="profile-grid-video" src={video.video} muted playsInline preload="metadata" />
+    {thumb}
     {rating}
     <div className="profile-video-meta"><div><strong>{video.name}</strong><small>₹{video.price ?? 1} · {video.category}</small></div><span className="small-note">{video.isAvailable === false ? 'Unavailable' : 'Closed'}</span></div>
   </article>

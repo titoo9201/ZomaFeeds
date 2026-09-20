@@ -25,7 +25,11 @@ function parseSong(rawSong) {
 }
 
 async function createFood(req, res) {
-    if (!req.file) return res.status(400).json({ message: "A video is required" });
+    if (!req.file) return res.status(400).json({ message: "A photo or video is required" });
+    const isVideo = req.file.mimetype.startsWith('video/');
+    const isImage = req.file.mimetype.startsWith('image/');
+    if (!isVideo && !isImage) return res.status(400).json({ message: "File must be a photo or a video" });
+
     const fileUploadResult = await storageService.uploadFile(req.file.buffer, uuid())
 
     let song;
@@ -37,6 +41,7 @@ async function createFood(req, res) {
         category: req.body.category,
         price: req.body.price ? Number(req.body.price) : undefined,
         video: fileUploadResult.url,
+        mediaType: isImage ? 'image' : 'video',
         foodPartner: req.foodPartner._id,
         song
     })

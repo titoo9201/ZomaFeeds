@@ -66,7 +66,7 @@ const Home = () => {
 const FoodReelCard = ({ food }) => {
   const partner = typeof food.foodPartner === 'object' ? food.foodPartner : null
   return <Link className="food-reel-card" to={partner?._id ? `/food-partner/${partner._id}?food=${food._id}` : `/order/${food._id}`}>
-    <video src={food.video} muted playsInline preload="metadata" />
+    {food.mediaType === 'image' ? <img src={food.video} alt={food.name} /> : <video src={food.video} muted playsInline preload="metadata" />}
     <span className="food-reel-shade" />
     <span className="food-reel-content"><strong>{food.name}</strong><small>{partner?.name || 'Food partner'}</small></span>
   </Link>

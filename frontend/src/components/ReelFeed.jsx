@@ -30,13 +30,14 @@ const ReelFeed = ({ items = [], onLike, onSave, onCommentAdded, emptyMessage = '
 
   useEffect(() => {
     const observer = new IntersectionObserver(entries => entries.forEach(entry => {
-      const video = entry.target
+      const el = entry.target
+      const isVideo = el.tagName === 'VIDEO'
       if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
-        video.play().catch(() => {})
-        setActiveItemId(video.dataset.id)
-      } else video.pause()
+        if (isVideo) el.play().catch(() => {})
+        setActiveItemId(el.dataset.id)
+      } else if (isVideo) el.pause()
     }), { threshold: [0, 0.6, 1] })
-    videoRefs.current.forEach(video => observer.observe(video))
+    videoRefs.current.forEach(el => observer.observe(el))
     return () => observer.disconnect()
   }, [itemIds])
 
@@ -46,9 +47,10 @@ const ReelFeed = ({ items = [], onLike, onSave, onCommentAdded, emptyMessage = '
   const activeSongDuration = activeItem?.song?.clipDuration || 30
 
   useEffect(() => {
-    videoRefs.current.forEach((video, id) => {
+    videoRefs.current.forEach((el, id) => {
+      if (el.tagName !== 'VIDEO') return
       const item = items.find(candidate => candidate._id === id)
-      video.muted = isMuted || Boolean(item?.song?.url)
+      el.muted = isMuted || Boolean(item?.song?.url)
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMuted, itemIds])
@@ -180,7 +182,9 @@ const ReelFeed = ({ items = [], onLike, onSave, onCommentAdded, emptyMessage = '
   return <div className={`reels-page${activeComments ? ' reels-page--comments-open' : ''}`}><audio ref={audioRef} /><div className="reels-feed" ref={feedRef} role="list">
     {items.length === 0 && <div className="empty-state"><p>{emptyMessage}</p></div>}
     {items.map(item => <section key={item._id} className={`reel${activeComments?._id === item._id ? ' reel--shrunk' : ''}`} role="listitem">
-      <video ref={element => element ? videoRefs.current.set(item._id, element) : videoRefs.current.delete(item._id)} data-id={item._id} className="reel-video" src={item.video} muted={isMuted || Boolean(item.song?.url)} playsInline loop preload="metadata" />
+      {item.mediaType === 'image'
+        ? <img ref={element => element ? videoRefs.current.set(item._id, element) : videoRefs.current.delete(item._id)} data-id={item._id} className="reel-video" src={item.video} alt={item.name} />
+        : <video ref={element => element ? videoRefs.current.set(item._id, element) : videoRefs.current.delete(item._id)} data-id={item._id} className="reel-video" src={item.video} muted={isMuted || Boolean(item.song?.url)} playsInline loop preload="metadata" />}
       <div className="reel-overlay"><div className="reel-overlay-gradient" aria-hidden="true" />
         <div className="reel-actions reel-actions--inline">{renderActionButtons(item)}</div>
         <div className="reel-content">{item.song?.title && <div className="reel-song" aria-label={`Song: ${item.song.title} by ${item.song.artist}`}><span aria-hidden="true">♪</span> {item.song.title} {item.song.artist ? `— ${item.song.artist}` : ''}</div>}<strong className="reel-title">{item.name}</strong><div className="reel-rating" aria-label={`${item.averageRating || 0} out of 5 stars from ${item.reviewCount || 0} reviews`}>★ {item.averageRating ? item.averageRating.toFixed(1) : '0.0'} <span>({item.reviewCount || 0})</span></div><p className="reel-description">{item.description}</p><div className="reel-links">{item.foodPartner?._id && <Link className="reel-btn" to={`/food-partner/${item.foodPartner._id}`}>Visit store</Link>}<Link className="reel-btn reel-btn-light" to={`/order/${item._id}`}>Order now</Link></div></div>

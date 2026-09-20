@@ -15,6 +15,7 @@ const CreateFood = () => {
     const [ videoFile, setVideoFile ] = useState(null);
     const [ videoURL, setVideoURL ] = useState('');
     const [ videoDuration, setVideoDuration ] = useState(null);
+    const [ mediaType, setMediaType ] = useState('video');
     const [ fileError, setFileError ] = useState('');
     const [ submitError, setSubmitError ] = useState('');
     const [ isUploading, setIsUploading ] = useState(false);
@@ -37,20 +38,35 @@ const CreateFood = () => {
     }, [ videoFile ]);
 
     useEffect(() => {
-        if (videoDuration == null) return;
+        if (mediaType !== 'video' || videoDuration == null) return;
         if (videoDuration < 5 || videoDuration > 30) {
             setFileError(`Video must be between 5 and 30 seconds long (this one is ${Math.round(videoDuration)}s).`);
             setVideoFile(null);
         }
-    }, [ videoDuration ]);
+    }, [ videoDuration, mediaType ]);
+
+    const acceptFile = file => {
+        if (file.type.startsWith('image/')) {
+            if (file.size > 15 * 1024 * 1024) { setFileError('Photo must be smaller than 15 MB.'); return; }
+            setFileError('');
+            setMediaType('image');
+            setVideoFile(file);
+            return;
+        }
+        if (file.type.startsWith('video/')) {
+            if (file.size > 100 * 1024 * 1024) { setFileError('Video must be smaller than 100 MB.'); return; }
+            setFileError('');
+            setMediaType('video');
+            setVideoFile(file);
+            return;
+        }
+        setFileError('Please select a valid photo or video file.');
+    };
 
     const onFileChange = (e) => {
         const file = e.target.files && e.target.files[ 0 ];
         if (!file) { setVideoFile(null); setFileError(''); return; }
-        if (!file.type.startsWith('video/')) { setFileError('Please select a valid video file.'); return; }
-        if (file.size > 100 * 1024 * 1024) { setFileError('Video must be smaller than 100 MB.'); return; }
-        setFileError('');
-        setVideoFile(file);
+        acceptFile(file);
     };
 
     const onDrop = (e) => {
@@ -58,10 +74,7 @@ const CreateFood = () => {
         e.stopPropagation();
         const file = e.dataTransfer?.files?.[ 0 ];
         if (!file) { return; }
-        if (!file.type.startsWith('video/')) { setFileError('Please drop a valid video file.'); return; }
-        if (file.size > 100 * 1024 * 1024) { setFileError('Video must be smaller than 100 MB.'); return; }
-        setFileError('');
-        setVideoFile(file);
+        acceptFile(file);
     };
 
     const onDragOver = (e) => {
@@ -111,19 +124,19 @@ const CreateFood = () => {
             <div className="create-food-card">
                 <header className="create-food-header">
                     <h1 className="create-food-title">Create Food</h1>
-                    <p className="create-food-subtitle">Upload a short video, give it a name, and add a description.</p>
-                    <p className="small-note">Video length: minimum 5 seconds, maximum 30 seconds.</p>
+                    <p className="create-food-subtitle">Upload a short video or a photo, give it a name, and add a description.</p>
+                    <p className="small-note">Video length: minimum 5 seconds, maximum 30 seconds. Photos have no length limit.</p>
                 </header>
 
                 <form className="create-food-form" onSubmit={onSubmit}>
                     <div className="field-group">
-                        <label htmlFor="foodVideo">Food Video</label>
+                        <label htmlFor="foodVideo">Food Photo or Video</label>
                         <input
                             id="foodVideo"
                             ref={fileInputRef}
                             className="file-input-hidden"
                             type="file"
-                            accept="video/*"
+                            accept="video/*,image/*"
                             onChange={onFileChange}
                         />
 
@@ -144,7 +157,7 @@ const CreateFood = () => {
                                 <div className="file-dropzone-text">
                                     <strong>Tap to upload</strong> or drag and drop
                                 </div>
-                                <div className="file-hint">MP4, WebM, MOV • Up to ~100MB</div>
+                                <div className="file-hint">Video (MP4, WebM, MOV • up to ~100MB) or Photo (JPG, PNG • up to ~15MB)</div>
                             </div>
                         </div>
 
@@ -165,12 +178,18 @@ const CreateFood = () => {
                         )}
                     </div>
 
-                    {videoURL && (
+                    {videoURL && mediaType === 'video' && (
                         <div className="video-preview">
                             <button className="video-preview-button" type="button" onClick={togglePreviewPlayback} aria-label="Play or pause video preview">
                                 <video ref={previewVideoRef} className="video-preview-el" src={videoURL} muted playsInline preload="metadata" onLoadedMetadata={() => setVideoDuration(previewVideoRef.current?.duration || null)} />
                                 <span className="video-preview-hint" aria-hidden="true">Tap to play / pause</span>
                             </button>
+                        </div>
+                    )}
+
+                    {videoURL && mediaType === 'image' && (
+                        <div className="video-preview">
+                            <img className="video-preview-el" src={videoURL} alt="Food preview" />
                         </div>
                     )}
 
@@ -212,7 +231,7 @@ const CreateFood = () => {
 
                     <div className="field-group">
                         <label>Song (optional)</label>
-                        <SongPicker selectedSong={song} onSelect={setSong} onRemove={() => setSong(null)} videoDuration={videoDuration} />
+                        <SongPicker selectedSong={song} onSelect={setSong} onRemove={() => setSong(null)} videoDuration={mediaType === 'video' ? videoDuration : undefined} />
                     </div>
 
                     <div className="field-group">
