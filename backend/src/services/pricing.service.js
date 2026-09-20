@@ -1,6 +1,4 @@
-const { RESTAURANT_GST_RATE, SERVICE_GST_RATE, PLATFORM_FEE } = require('../config/pricingConfig');
-
-const MAX_DELIVERY_RANGE_KM = 15;
+const { RESTAURANT_GST_RATE, SERVICE_GST_RATE, PLATFORM_FEE, MAX_DELIVERY_RANGE_KM } = require('../config/pricingConfig');
 
 // Slabs are checked in order; the first one whose maxKm covers the distance wins.
 const DELIVERY_SLABS = [
@@ -9,12 +7,11 @@ const DELIVERY_SLABS = [
     { maxKm: 15, fee: 40 }
 ];
 
-// Returns the delivery fee in rupees, or null when the address is out of deliverable range
-// (beyond 15km, or beyond the restaurant's own serviceRadiusKm — whichever is smaller).
-function calculateDeliveryFee(distanceKm, serviceRadiusKm) {
+// Returns the delivery fee in rupees, or null when the address is beyond the flat
+// platform-wide MAX_DELIVERY_RANGE_KM (15km) — the only delivery-range rule, for every restaurant.
+function calculateDeliveryFee(distanceKm) {
     if (distanceKm == null || !Number.isFinite(distanceKm)) return null;
-    const maxRange = Math.min(MAX_DELIVERY_RANGE_KM, serviceRadiusKm ?? MAX_DELIVERY_RANGE_KM);
-    if (distanceKm > maxRange) return null;
+    if (distanceKm > MAX_DELIVERY_RANGE_KM) return null;
     const slab = DELIVERY_SLABS.find(item => distanceKm <= item.maxKm);
     return slab ? slab.fee : null;
 }

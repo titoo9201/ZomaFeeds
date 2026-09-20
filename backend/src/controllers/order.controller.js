@@ -26,7 +26,7 @@ async function calculateDeliveryQuote({ foodPartner, address }) {
         if (route) distanceKm = Number((route.distance / 1000).toFixed(2));
     }
 
-    let deliveryFee = pricingService.calculateDeliveryFee(distanceKm, foodPartner.serviceRadiusKm);
+    let deliveryFee = pricingService.calculateDeliveryFee(distanceKm);
     // Address genuinely couldn't be geocoded even after the fallback chain — don't block the
     // order over it, charge a standard delivery fee instead. A confirmed too-far distance still
     // gets rejected below (that's a real business rule, not a geocoding hiccup).
@@ -45,7 +45,7 @@ async function quoteOrder(req, res) {
         if (!address?.trim()) return res.status(400).json({ message: 'Address is required' });
         const foodItem = await foodModel.findById(food);
         if (!foodItem) return res.status(404).json({ message: 'Food not found' });
-        const foodPartner = await foodPartnerModel.findById(foodItem.foodPartner).select('address serviceRadiusKm packagingCharge');
+        const foodPartner = await foodPartnerModel.findById(foodItem.foodPartner).select('address packagingCharge');
         if (!foodPartner) return res.status(404).json({ message: 'Restaurant not found' });
 
         const { distanceKm, deliveryFee } = await calculateDeliveryQuote({ foodPartner, address });
@@ -66,7 +66,7 @@ async function createOrder(req, res) {
         const foodItem = await foodModel.findById(food);
         if (!foodItem) return res.status(404).json({ message: 'Food not found' });
         if (!foodItem.isAvailable) return res.status(409).json({ message: 'This item is currently unavailable' });
-        const foodPartner = await foodPartnerModel.findById(foodItem.foodPartner).select('isOpen address serviceRadiusKm packagingCharge');
+        const foodPartner = await foodPartnerModel.findById(foodItem.foodPartner).select('isOpen address packagingCharge');
         if (!foodPartner?.isOpen) return res.status(409).json({ message: 'This restaurant is currently closed', foodPartnerId: foodItem.foodPartner });
         if (!Number.isInteger(Number(quantity)) || Number(quantity) < 1 || !address?.trim()) return res.status(400).json({ message: 'Quantity and delivery address are required' });
 

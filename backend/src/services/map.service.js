@@ -1,5 +1,6 @@
 const axios = require('axios');
 const foodPartnerModel = require('../models/foodpartner.model');
+const { MAX_DELIVERY_RANGE_KM } = require('../config/pricingConfig');
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
 const OSRM_URL = 'https://router.project-osrm.org/route/v1/driving';
@@ -54,8 +55,10 @@ async function getRoute(from, to) {
     }
 }
 
-// Returns a Map<foodPartnerId, distanceKm> of partners whose own serviceRadiusKm covers the
-// given coordinates, or null when no coordinates are given (meaning: no radius filtering).
+// Returns a Map<foodPartnerId, distanceKm> of partners within the flat platform-wide
+// MAX_DELIVERY_RANGE_KM of the given coordinates, or null when no coordinates are given
+// (meaning: no radius filtering). This same flat 15km cap is the only delivery-range rule
+// used both for feed/discovery and for actual order acceptance — no per-restaurant override.
 async function getPartnersWithinServiceRadius(coordinates) {
     if (!coordinates || coordinates.length !== 2) return null;
     try {
@@ -64,12 +67,8 @@ async function getPartnersWithinServiceRadius(coordinates) {
                 $geoNear: {
                     near: { type: 'Point', coordinates },
                     distanceField: 'distanceMeters',
-                    spherical: true
-                }
-            },
-            {
-                $match: {
-                    $expr: { $lte: ['$distanceMeters', { $multiply: [{ $ifNull: ['$serviceRadiusKm', 5] }, 1000] }] }
+                    spherical: true,
+                    maxDistance: MAX_DELIVERY_RANGE_KM * 1000
                 }
             },
             { $project: { distanceMeters: 1 } }

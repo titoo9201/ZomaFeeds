@@ -8,6 +8,18 @@ const LocationPrompt = ({ onLocationSet, onSkip }) => {
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Sharing your location here also drops a "Home" entry into the saved-address book (if you
+  // don't already have one), so it's ready to pick at checkout without retyping it there too.
+  const saveAsHomeAddress = async (lat, lng) => {
+    try {
+      const { data: existing } = await api.get('/api/user/addresses')
+      if (existing.addresses.some(item => item.label === 'Home')) return
+      const { data: reverse } = await api.get('/api/geo/reverse', { params: { lat, lng } })
+      if (!reverse.address?.city) return
+      await api.post('/api/user/addresses', { label: 'Home', ...reverse.address })
+    } catch (err) { void err }
+  }
+
   const useMyLocation = () => {
     if (!navigator.geolocation) { setMode('manual'); return }
     setError('')
@@ -16,7 +28,10 @@ const LocationPrompt = ({ onLocationSet, onSkip }) => {
       async position => {
         try {
           setIsSubmitting(true)
-          const { data } = await api.patch('/api/user/location', { lat: position.coords.latitude, lng: position.coords.longitude })
+          const lat = position.coords.latitude
+          const lng = position.coords.longitude
+          const { data } = await api.patch('/api/user/location', { lat, lng })
+          saveAsHomeAddress(lat, lng)
           onLocationSet(data.user)
         } catch {
           setError('Could not save your location. Please try again.')

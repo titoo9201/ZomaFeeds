@@ -49,10 +49,6 @@ const foodPartnerSchema = new mongoose.Schema({
         type: { type: String, enum: ['Point'] },
         coordinates: { type: [Number] }
     },
-    serviceRadiusKm: {
-        type: Number,
-        default: 5
-    },
     packagingCharge: {
         type: Number,
         default: 0

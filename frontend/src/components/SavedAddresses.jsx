@@ -11,6 +11,7 @@ const SavedAddresses = ({ selectable = false, onSelect, showDelete = false }) =>
   const [addresses, setAddresses] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [isAdding, setIsAdding] = useState(false)
+  const [editingId, setEditingId] = useState(null)
   const [label, setLabel] = useState('Home')
   const [customLabel, setCustomLabel] = useState('')
   const [addressFields, setAddressFields] = useState(EMPTY_ADDRESS)
@@ -21,18 +22,35 @@ const SavedAddresses = ({ selectable = false, onSelect, showDelete = false }) =>
     api.get('/api/user/addresses').then(({ data }) => setAddresses(data.addresses)).catch(() => {}).finally(() => setIsLoading(false))
   }, [])
 
+  const startEditing = item => {
+    setEditingId(item._id)
+    setLabel(item.label)
+    setCustomLabel(item.customLabel || '')
+    setAddressFields({ houseNo: item.houseNo || '', street: item.street || '', city: item.city || '', state: item.state || '', pincode: item.pincode || '' })
+    setError('')
+    setIsAdding(true)
+  }
+
+  const cancelForm = () => {
+    setIsAdding(false)
+    setEditingId(null)
+    setAddressFields(EMPTY_ADDRESS)
+    setLabel('Home')
+    setCustomLabel('')
+  }
+
   const saveAddress = async event => {
     event.preventDefault()
     try {
       setIsSaving(true)
       setError('')
-      const { data } = await api.post('/api/user/addresses', { label, customLabel, ...addressFields })
+      const { data } = editingId
+        ? await api.patch(`/api/user/addresses/${editingId}`, { label, customLabel, ...addressFields })
+        : await api.post('/api/user/addresses', { label, customLabel, ...addressFields })
       setAddresses(data.addresses)
-      setIsAdding(false)
-      setAddressFields(EMPTY_ADDRESS)
-      setLabel('Home')
-      setCustomLabel('')
-      if (selectable) onSelect(data.addresses[data.addresses.length - 1])
+      const savedItem = editingId ? data.addresses.find(item => item._id === editingId) : data.addresses[data.addresses.length - 1]
+      cancelForm()
+      if (selectable && savedItem) onSelect(savedItem)
     } catch (requestError) {
       setError(requestError.response?.data?.message || 'Could not save this address.')
     } finally {
@@ -57,6 +75,7 @@ const SavedAddresses = ({ selectable = false, onSelect, showDelete = false }) =>
         <div><strong>{labelText(item)}</strong><p>{item.address}</p></div>
         <div className="saved-address-actions">
           {selectable && <button type="button" className="btn-primary" onClick={() => onSelect(item)}>Deliver here</button>}
+          {showDelete && <button type="button" className="btn-ghost" onClick={() => startEditing(item)}>Edit</button>}
           {showDelete && <button type="button" className="btn-ghost" onClick={() => deleteAddress(item._id)}>Remove</button>}
         </div>
       </div>)}
@@ -80,8 +99,8 @@ const SavedAddresses = ({ selectable = false, onSelect, showDelete = false }) =>
         <AddressFields value={addressFields} onChange={setAddressFields} idPrefix="saved-addr" />
         {error && <p className="error-text" role="alert">{error}</p>}
         <div className="form-actions">
-          <button className="btn-primary" type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : 'Save address'}</button>
-          <button type="button" className="btn-ghost" onClick={() => setIsAdding(false)} disabled={isSaving}>Cancel</button>
+          <button className="btn-primary" type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : editingId ? 'Update address' : 'Save address'}</button>
+          <button type="button" className="btn-ghost" onClick={cancelForm} disabled={isSaving}>Cancel</button>
         </div>
       </form>}
   </div>

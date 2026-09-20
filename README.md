@@ -65,7 +65,7 @@ Everything — auth, media storage, email, real-time location, routing, geocodin
 | | |
 |---|---|
 | 🎬 | **Reels-first discovery** — a vertical, swipeable feed of food videos *or photos* (IntersectionObserver-driven autoplay), instead of a boring list of restaurants |
-| 📍 | **Radius-aware Home feed** — restaurants are only shown if you're inside *their own* configurable service radius (`$geoNear` on your saved location), sorted by rating |
+| 📍 | **Radius-aware Home feed** — restaurants are only shown if you're within a flat 15km of your saved location (`$geoNear`), sorted by rating |
 | ❤️💬🔖 | **Like, save & comment** on any reel, with live counts, comment avatars, an Instagram-style comment sheet (video shrinks to a corner while comments take over), and long-press-to-delete your own comment |
 | ⭐ | **Dish + restaurant ratings** — every reel shows its own average rating, and checkout shows both the dish's rating and the restaurant's overall rating |
 | 🏠💌 | **Labelled address book** — save multiple delivery addresses (Home, Girlfriend, Boyfriend, Friend, Relative, Other), each auto-fillable from your live GPS location (reverse-geocoded into house no. / street / city / state / pincode) |
@@ -91,13 +91,13 @@ Everything — auth, media storage, email, real-time location, routing, geocodin
 | ✅❌ | **Accept / Reject workflow** — accepting moves the order into your kitchen queue and geocodes both your address and the customer's for delivery pricing; rejecting requires a reason and auto-refunds a paid order |
 | 🚚🛵 | **See exactly who's delivering** — once a rider claims the order, the dashboard shows their name and live status ("heading here for pickup" → "out for delivery with …") instead of a dead-end "advance" button |
 | 📦💰 | **Optional packaging charge** — a flat per-order fee you control, shown as its own line item on every customer bill |
-| 📍 | **Service radius** — set how far you deliver; customers outside it never see you in their feed, and orders from just-out-of-range addresses are politely rejected at checkout |
+| 📍 | **Flat 15km delivery range** — a platform-wide cap, the same for every restaurant; customers outside it never see you in their feed, and orders from out-of-range addresses are politely rejected at checkout |
 | 🍕 | **Full menu control** — add, edit (name, description, price, category, availability), or delete any item; upload a **photo or a video** for each reel |
 | 🎬 | **Reel length limit** — video uploads must be 5–30 seconds, checked the moment a file is selected |
 | 🎵 | **Instagram-style song trimming** — search a track, drag a waveform window to pick where it starts, tap the circular timer to set the clip length (5–30s, capped to the video's own length), then preview before attaching |
 | ⭐💬 | **Per-item and restaurant-wide ratings**, plus a read-only view of every comment and like count on your own reels |
 | 🔄 | **Live-updating dashboard** — incoming orders refresh automatically every few seconds; no manual reload to see a new one land |
-| 🏪 | **Editable business profile** — name, contact, phone, address (with GPS auto-fill), restaurant type, service radius, packaging charge, photo |
+| 🏪 | **Editable business profile** — name, contact, phone, address (with GPS auto-fill), restaurant type, packaging charge, photo |
 | 📧 | **Branded automatic emails** — a welcome email on signup, then an itemised order-bill email, out-for-delivery, and delivered emails as the order moves through its lifecycle |
 
 ### 🛵 For delivery riders
@@ -110,7 +110,7 @@ Everything — auth, media storage, email, real-time location, routing, geocodin
 | 🔒 | **Proximity-gated actions** — "Delivered" only unlocks once the rider's live location is within ~200m of the drop point; for Cash on Delivery, it stays locked until the *customer* confirms the cash handover from their own tracking screen |
 | 🖼️ | **Profile picture, phone & vehicle number** — visible to the customer on their tracking screen, with a one-tap `tel:` call button |
 | 💰 | **Today / Yesterday / Past earnings** — the same three-bucket stat-card pattern as the restaurant dashboard, driven by the actual distance-based delivery fee earned per completed delivery |
-| 🚫 | **Distance-slab delivery pricing built in** — ₹20 (0–3 km) / ₹30 (3–7 km) / ₹40 (7–15 km), capped by the restaurant's own service radius; an address that's genuinely out of range is rejected *before* a rider ever sees it |
+| 🚫 | **Distance-slab delivery pricing built in** — ₹20 (0–3 km) / ₹30 (3–7 km) / ₹40 (7–15 km), capped by the platform-wide 15km limit; an address that's genuinely out of range is rejected *before* a rider ever sees it |
 
 ### 🛠️ Under the hood
 
@@ -275,7 +275,6 @@ erDiagram
         string openingTime
         string closingTime
         geopoint location
-        number serviceRadiusKm
         number packagingCharge
     }
     RIDER {
@@ -387,11 +386,11 @@ flowchart TD
     Geo1 -->|still unresolved after<br/>progressively coarser retries| Default["Use a standard<br/>delivery fee — never block the order"]
     RestAddr["Restaurant address"] --> Geo2["geocodeWithFallback(restaurant)"]
     Geo2 --> Route["OSRM route → distance in km"]
-    Route --> Slab{"Distance vs.<br/>15km cap / service radius"}
+    Route --> Slab{"Distance vs.<br/>flat 15km cap"}
     Slab -->|"0–3km"| Fee20["₹20"]
     Slab -->|"3–7km"| Fee30["₹30"]
     Slab -->|"7–15km"| Fee40["₹40"]
-    Slab -->|"beyond both caps"| Reject["409 — outside delivery range"]
+    Slab -->|"beyond 15km"| Reject["409 — outside delivery range"]
     Fee20 & Fee30 & Fee40 & Default --> Bill["itemsTotal + restaurantGST<br/>+ packagingCharge + deliveryFee<br/>+ platformFee + serviceGST"]
     Bill --> PlaceOrder["POST /api/orders<br/>(recomputed server-side, never trusts the client)"]
 ```
@@ -595,9 +594,9 @@ All protected routes read a JWT from an `httpOnly` cookie set at login. `user`, 
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/` | user | List partners within your radius |
+| GET | `/` | user | List partners within a flat 15km of your location |
 | GET | `/me` | foodPartner | Own profile + menu + stats |
-| PATCH | `/me` | foodPartner | Update business profile (address auto-geocodes, service radius, packaging charge) |
+| PATCH | `/me` | foodPartner | Update business profile (address auto-geocodes, packaging charge) |
 | PATCH | `/me/hours` | foodPartner | Toggle open/closed and/or update hours |
 | POST | `/:id/notify-me` | user | Ask to be notified when a closed restaurant reopens |
 | GET | `/:id` | user | Public partner profile + menu |

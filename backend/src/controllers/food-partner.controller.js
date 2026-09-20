@@ -148,7 +148,7 @@ async function updateHours(req, res) {
 
 async function updateProfile(req, res) {
     try {
-        const { name, contactName, phone, address, restaurantType, email, serviceRadiusKm, packagingCharge } = req.body;
+        const { name, contactName, phone, address, restaurantType, email, packagingCharge } = req.body;
         const partner = await foodPartnerModel.findById(req.foodPartner._id);
         if (!partner) return res.status(404).json({ message: 'Food partner account not found' });
 
@@ -167,11 +167,6 @@ async function updateProfile(req, res) {
             if (geocoded) partner.location = { type: 'Point', coordinates: [geocoded.lng, geocoded.lat] };
         }
         if (restaurantType) partner.restaurantType = restaurantType;
-        if (serviceRadiusKm !== undefined) {
-            const radius = Number(serviceRadiusKm);
-            if (!Number.isFinite(radius) || radius <= 0) return res.status(400).json({ message: 'Service radius must be a positive number' });
-            partner.serviceRadiusKm = radius;
-        }
         if (packagingCharge !== undefined) {
             const charge = Number(packagingCharge);
             if (!Number.isFinite(charge) || charge < 0) return res.status(400).json({ message: 'Packaging charge must be a non-negative number' });

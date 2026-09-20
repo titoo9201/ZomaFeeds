@@ -22,7 +22,7 @@ const Profile = () => {
   const [error, setError] = useState('')
   const [isNotifyRequested, setIsNotifyRequested] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-  const [editFields, setEditFields] = useState({ name: '', contactName: '', phone: '', email: '', restaurantType: 'Both', serviceRadiusKm: 5, packagingCharge: 0 })
+  const [editFields, setEditFields] = useState({ name: '', contactName: '', phone: '', email: '', restaurantType: 'Both', packagingCharge: 0 })
   const [addressFields, setAddressFields] = useState(EMPTY_ADDRESS)
   const [editPicture, setEditPicture] = useState(null)
   const [editPreview, setEditPreview] = useState('')
@@ -64,7 +64,7 @@ const Profile = () => {
   }
 
   const startEditing = () => {
-    setEditFields({ name: profile?.name || '', contactName: profile?.contactName || '', phone: profile?.phone || '', email: profile?.email || '', restaurantType: profile?.restaurantType || 'Both', serviceRadiusKm: profile?.serviceRadiusKm || 5, packagingCharge: profile?.packagingCharge || 0 })
+    setEditFields({ name: profile?.name || '', contactName: profile?.contactName || '', phone: profile?.phone || '', email: profile?.email || '', restaurantType: profile?.restaurantType || 'Both', packagingCharge: profile?.packagingCharge || 0 })
     setAddressFields(EMPTY_ADDRESS)
     setEditPicture(null)
     setEditError('')
@@ -121,19 +121,13 @@ const Profile = () => {
         <AddressFields value={addressFields} onChange={setAddressFields} idPrefix="edit-address" required={false} />
         <p className="small-note">Fill this in only if you want to update your address — saving it updates your map location automatically.</p>
       </div>
-      <div className="edit-profile-two-col">
-        <div className="field-group">
-          <label htmlFor="editRestaurantType">Restaurant type</label>
-          <select id="editRestaurantType" value={editFields.restaurantType} onChange={event => updateField('restaurantType', event.target.value)}>
-            <option value="Veg">Veg</option>
-            <option value="Non-Veg">Non-Veg</option>
-            <option value="Both">Both</option>
-          </select>
-        </div>
-        <div className="field-group">
-          <label htmlFor="editServiceRadius">Service radius (km)</label>
-          <input id="editServiceRadius" type="number" min="0.5" max="50" step="0.5" value={editFields.serviceRadiusKm} onChange={event => updateField('serviceRadiusKm', event.target.value)} required />
-        </div>
+      <div className="field-group">
+        <label htmlFor="editRestaurantType">Restaurant type</label>
+        <select id="editRestaurantType" value={editFields.restaurantType} onChange={event => updateField('restaurantType', event.target.value)}>
+          <option value="Veg">Veg</option>
+          <option value="Non-Veg">Non-Veg</option>
+          <option value="Both">Both</option>
+        </select>
       </div>
       <div className="field-group">
         <label htmlFor="editPackagingCharge">Packaging charge (₹, optional)</label>
