@@ -23,6 +23,8 @@ const ReelFeed = ({ items = [], onLike, onSave, onCommentAdded, emptyMessage = '
   const [commentMenu, setCommentMenu] = useState(null)
   const commentRefs = useRef(new Map())
   const pressTimerRef = useRef(null)
+  const activeCommentsRef = useRef(null)
+  useEffect(() => { activeCommentsRef.current = activeComments }, [activeComments])
 
   useEffect(() => { api.get('/api/auth/me').then(({ data }) => setCurrentUserId(data.account?._id || '')).catch(() => {}) }, [])
 
@@ -34,7 +36,7 @@ const ReelFeed = ({ items = [], onLike, onSave, onCommentAdded, emptyMessage = '
       const isVideo = el.tagName === 'VIDEO'
       if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
         if (isVideo) el.play().catch(() => {})
-        setActiveItemId(el.dataset.id)
+        if (!activeCommentsRef.current) setActiveItemId(el.dataset.id)
       } else if (isVideo) el.pause()
     }), { threshold: [0, 0.6, 1] })
     videoRefs.current.forEach(el => observer.observe(el))
@@ -181,15 +183,17 @@ const ReelFeed = ({ items = [], onLike, onSave, onCommentAdded, emptyMessage = '
 
   return <div className={`reels-page${activeComments ? ' reels-page--comments-open' : ''}`}><audio ref={audioRef} /><div className="reels-feed" ref={feedRef} role="list">
     {items.length === 0 && <div className="empty-state"><p>{emptyMessage}</p></div>}
-    {items.map(item => <section key={item._id} className={`reel${activeComments?._id === item._id ? ' reel--shrunk' : ''}`} role="listitem">
-      {item.mediaType === 'image'
-        ? <img ref={element => element ? videoRefs.current.set(item._id, element) : videoRefs.current.delete(item._id)} data-id={item._id} className="reel-video" src={item.video} alt={item.name} />
-        : <video ref={element => element ? videoRefs.current.set(item._id, element) : videoRefs.current.delete(item._id)} data-id={item._id} className="reel-video" src={item.video} muted={isMuted || Boolean(item.song?.url)} playsInline loop preload="metadata" />}
+    {items.map(item => { const isCommentsActive = activeComments?._id === item._id; return <section key={item._id} className={`reel${isCommentsActive ? ' reel--comments-active' : ''}`} role="listitem">
+      <div className={`reel-media${isCommentsActive ? ' reel-media--floating' : ''}`}>
+        {item.mediaType === 'image'
+          ? <img ref={element => element ? videoRefs.current.set(item._id, element) : videoRefs.current.delete(item._id)} data-id={item._id} className="reel-video" src={item.video} alt={item.name} />
+          : <video ref={element => element ? videoRefs.current.set(item._id, element) : videoRefs.current.delete(item._id)} data-id={item._id} className="reel-video" src={item.video} muted={isMuted || Boolean(item.song?.url)} playsInline loop preload="metadata" />}
+      </div>
       <div className="reel-overlay"><div className="reel-overlay-gradient" aria-hidden="true" />
         <div className="reel-actions reel-actions--inline">{renderActionButtons(item)}</div>
         <div className="reel-content">{item.song?.title && <div className="reel-song" aria-label={`Song: ${item.song.title} by ${item.song.artist}`}><span aria-hidden="true">♪</span> {item.song.title} {item.song.artist ? `— ${item.song.artist}` : ''}</div>}<strong className="reel-title">{item.name}</strong><div className="reel-rating" aria-label={`${item.averageRating || 0} out of 5 stars from ${item.reviewCount || 0} reviews`}>★ {item.averageRating ? item.averageRating.toFixed(1) : '0.0'} <span>({item.reviewCount || 0})</span></div><p className="reel-description">{item.description}</p><div className="reel-links">{item.foodPartner?._id && <Link className="reel-btn" to={`/food-partner/${item.foodPartner._id}`}>Visit store</Link>}<Link className="reel-btn reel-btn-light" to={`/order/${item._id}`}>Order now</Link></div></div>
       </div>
-    </section>)}
+    </section> })}
   </div>
   {items.length > 1 && <div className="reels-scroll-nav">
     <button type="button" onClick={() => scrollByReel(-1)} aria-label="Previous reel">▲</button>

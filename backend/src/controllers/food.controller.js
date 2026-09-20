@@ -4,6 +4,7 @@ const likeModel = require("../models/likes.model")
 const saveModel = require("../models/save.model")
 const commentModel = require('../models/comment.model')
 const reviewModel = require('../models/review.model')
+const mapService = require('../services/map.service')
 const { v4: uuid } = require("uuid")
 
 async function getPartnerRatingMap() {
@@ -86,6 +87,8 @@ async function updateFood(req, res) {
 }
 
 async function getFoodItems(req, res) {
+    const distanceMap = await mapService.getPartnersWithinServiceRadius(req.user.location?.coordinates);
+
     const [foodItems, likes, saves, partnerRatingMap] = await Promise.all([
         foodModel.find({}).populate('foodPartner', 'name address profilePicture isOpen openingTime closingTime'),
         likeModel.find({ user: req.user._id }).select('food'),
@@ -98,16 +101,26 @@ async function getFoodItems(req, res) {
     const commentCountMap = new Map(commentCounts.map(item => [String(item._id), item.count]));
     const reviewStats = await reviewModel.aggregate([{ $group: { _id: '$food', averageRating: { $avg: '$rating' }, reviewCount: { $sum: 1 } } }]);
     const reviewMap = new Map(reviewStats.map(item => [String(item._id), item]));
-    const enrichedFoodItems = foodItems.map(item => {
+
+    // With no user location set, keep the existing unfiltered/unsorted behavior (client sorts by popularity).
+    const visibleFoodItems = distanceMap ? foodItems.filter(item => distanceMap.has(String(item.foodPartner?._id))) : foodItems;
+
+    const enrichedFoodItems = visibleFoodItems.map(item => {
         const stats = reviewMap.get(String(item._id));
         const object = item.toObject();
-        const partnerRating = object.foodPartner ? partnerRatingMap.get(String(object.foodPartner._id)) : undefined;
-        if (object.foodPartner) object.foodPartner = { ...object.foodPartner, averageRating: partnerRating?.averageRating || 0, reviewCount: partnerRating?.reviewCount || 0 };
+        const partnerId = object.foodPartner ? String(object.foodPartner._id) : null;
+        const partnerRating = partnerId ? partnerRatingMap.get(partnerId) : undefined;
+        if (object.foodPartner) object.foodPartner = { ...object.foodPartner, averageRating: partnerRating?.averageRating || 0, reviewCount: partnerRating?.reviewCount || 0, distanceKm: distanceMap?.get(partnerId) };
         return { ...object, liked: liked.has(String(item._id)), saved: saved.has(String(item._id)), commentsCount: commentCountMap.get(String(item._id)) || 0, averageRating: stats ? Number(stats.averageRating.toFixed(1)) : 0, reviewCount: stats?.reviewCount || 0 };
     });
+
+    // Radius-filtered feeds default-sort by rating; the no-location fallback keeps its existing order (client sorts by popularity).
+    if (distanceMap) enrichedFoodItems.sort((a, b) => b.averageRating - a.averageRating);
+
     res.status(200).json({
         message: "Food items fetched successfully",
-        foodItems: enrichedFoodItems
+        foodItems: enrichedFoodItems,
+        hasUserLocation: Boolean(distanceMap)
     })
 }
 

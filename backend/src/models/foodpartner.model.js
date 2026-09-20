@@ -44,8 +44,22 @@ const foodPartnerSchema = new mongoose.Schema({
     closingTime: {
         type: String,
         default: '22:00'
+    },
+    location: {
+        type: { type: String, enum: ['Point'] },
+        coordinates: { type: [Number] }
+    },
+    serviceRadiusKm: {
+        type: Number,
+        default: 5
+    },
+    packagingCharge: {
+        type: Number,
+        default: 0
     }
 })
+
+foodPartnerSchema.index({ location: '2dsphere' });
 
 const foodPartnerModel = mongoose.model("foodpartner", foodPartnerSchema);
 

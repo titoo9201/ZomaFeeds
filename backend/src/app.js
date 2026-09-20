@@ -8,6 +8,9 @@ const reviewRoutes = require('./routes/review.routes');
 const orderRoutes = require('./routes/order.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const songRoutes = require('./routes/song.routes');
+const riderRoutes = require('./routes/rider.routes');
+const userRoutes = require('./routes/user.routes');
+const geoRoutes = require('./routes/geo.routes');
 const cors = require('cors');
 
 const app = express();
@@ -30,5 +33,8 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/songs', songRoutes);
+app.use('/api/rider', riderRoutes);
+app.use('/api/user', userRoutes);
+app.use('/api/geo', geoRoutes);
 
 module.exports = app;

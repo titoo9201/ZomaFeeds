@@ -5,7 +5,7 @@
 .landing-nav { padding: 18px clamp(20px, 5vw, 64px); }
 .landing-nav-inner { max-width: 1160px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .landing-logo { font-size: 1.35rem; font-weight: 800; letter-spacing: -.02em; background: var(--brand-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; }
-.landing-nav-links { display: flex; align-items: center; gap: 18px; font-size: .88rem; font-weight: 700; }
+.landing-nav-links { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 12px 18px; font-size: .88rem; font-weight: 700; }
 .landing-nav-links a { color: var(--color-text-secondary); }
 .landing-nav-links a:hover { color: var(--color-text); }
 .landing-nav-links a.landing-nav-cta { padding: 9px 18px; border-radius: 999px; background: var(--button-bg); color: var(--button-text); }
@@ -44,8 +44,11 @@
 
 .landing-split-wrap { background: var(--color-bg-muted); }
 .landing-split { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.landing-split--triple { grid-template-columns: repeat(3, 1fr); }
 .landing-split-col { padding: 32px; border-radius: var(--radius-md); background: var(--color-surface); border: 1px solid var(--color-border); box-shadow: var(--shadow-sm); display: grid; gap: 14px; align-content: start; }
+.landing-split-col--rider { background: color-mix(in srgb, var(--color-warm-accent) 10%, var(--color-surface)); }
 .landing-split-col--partner { background: color-mix(in srgb, var(--brand-secondary) 8%, var(--color-surface)); }
+.landing-split-icon { width: 44px; height: 44px; border-radius: var(--radius-sm); display: grid; place-items: center; color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
 .landing-split-col h3 { margin: 0; font-size: 1.35rem; letter-spacing: -.01em; }
 .landing-split-col ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
 .landing-split-col li { display: flex; gap: 10px; align-items: flex-start; color: var(--color-text-secondary); font-size: .92rem; line-height: 1.4; }

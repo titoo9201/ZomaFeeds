@@ -1,0 +1,19 @@
+@import './theme.css';
+
+.address-fields { display: grid; gap: var(--space-3, 12px); }
+.address-locate-btn {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1.5px solid var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  color: var(--color-accent);
+  font-weight: 700;
+  font-size: .85rem;
+  cursor: pointer;
+}
+.address-locate-btn:hover { background: color-mix(in srgb, var(--color-accent) 18%, transparent); }
+.address-locate-btn:disabled { opacity: .6; cursor: wait; }

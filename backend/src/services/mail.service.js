@@ -83,13 +83,22 @@ async function sendWelcomeEmail(email, name) {
 
 function billTable(order) {
     const foodName = order.food?.name || 'Food item';
+    const b = order.billBreakdown || {};
+    const itemsTotal = b.itemsTotal ?? order.total;
+    const row = (label, value) => `<tr><td style="padding:8px 0;color:${TEXT_MUTED};font-size:14px;">${label}</td><td style="padding:8px 0;text-align:right;color:${TEXT_MAIN};font-size:14px;">${value}</td></tr>`;
     return `
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 20px;">
             <tr><td style="padding:8px 0;color:${TEXT_MUTED};font-size:14px;">Item</td><td style="padding:8px 0;text-align:right;color:${TEXT_MAIN};font-size:14px;font-weight:600;">${foodName}</td></tr>
             <tr><td style="padding:8px 0;color:${TEXT_MUTED};font-size:14px;">Quantity</td><td style="padding:8px 0;text-align:right;color:${TEXT_MAIN};font-size:14px;">${order.quantity}</td></tr>
+            ${row('Item total', `₹${itemsTotal}`)}
+            ${b.restaurantGST != null ? row('Restaurant GST', `₹${b.restaurantGST}`) : ''}
+            ${b.packagingCharge > 0 ? row('Packaging charge', `₹${b.packagingCharge}`) : ''}
+            ${row('Delivery fee', `₹${order.deliveryFee || 0}`)}
+            ${b.platformFee != null ? row('Platform fee', `₹${b.platformFee}`) : ''}
+            ${b.serviceGST != null ? row('GST on fees', `₹${b.serviceGST}`) : ''}
             <tr><td style="padding:8px 0;color:${TEXT_MUTED};font-size:14px;">Payment method</td><td style="padding:8px 0;text-align:right;color:${TEXT_MAIN};font-size:14px;">${(order.paymentMethod || '').toUpperCase()}</td></tr>
             <tr><td style="padding:8px 0;color:${TEXT_MUTED};font-size:14px;">Payment status</td><td style="padding:8px 0;text-align:right;color:${TEXT_MAIN};font-size:14px;text-transform:capitalize;">${order.paymentStatus}</td></tr>
-            <tr><td style="padding:14px 0 0;font-weight:800;font-size:16px;color:${TEXT_MAIN};border-top:1px solid #EEDCDA;">Total</td><td style="padding:14px 0 0;text-align:right;font-weight:800;font-size:16px;color:#E23744;border-top:1px solid #EEDCDA;">₹${order.total}</td></tr>
+            <tr><td style="padding:14px 0 0;font-weight:800;font-size:16px;color:${TEXT_MAIN};border-top:1px solid #EEDCDA;">Grand Total</td><td style="padding:14px 0 0;text-align:right;font-weight:800;font-size:16px;color:#E23744;border-top:1px solid #EEDCDA;">₹${order.total}</td></tr>
         </table>
     `;
 }

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Clapperboard, Star, Bike, Music2 } from 'lucide-react'
+import { Clapperboard, Star, Bike, Music2, Home, ChefHat } from 'lucide-react'
 import ThemeToggle from '../../components/ThemeToggle'
 import '../../styles/landing.css'
 
@@ -15,6 +15,13 @@ const USER_POINTS = [
   'Like, save, and comment on the dishes you love',
   'A simple checkout with UPI, card, or cash on delivery',
   'Get notified the moment a closed restaurant reopens'
+]
+
+const RIDER_POINTS = [
+  'Go online whenever you want to start earning',
+  'Accept nearby delivery requests in real time',
+  'Live GPS guides you from pickup to drop-off',
+  'Get paid for every delivery you complete'
 ]
 
 const PARTNER_POINTS = [
@@ -38,6 +45,7 @@ const LandingPage = () => <div className="landing-page">
       <nav className="landing-nav-links">
         <ThemeToggle className="theme-toggle--inline" />
         <Link to="/food-partner/login" state={{ internal: true }}>Partner login</Link>
+        <Link to="/rider/login" state={{ internal: true }}>Rider login</Link>
         <Link to="/user/login" state={{ internal: true }} className="landing-nav-cta">Sign in</Link>
       </nav>
     </div>
@@ -50,9 +58,10 @@ const LandingPage = () => <div className="landing-page">
       <p>Scroll bite-sized food reels from restaurants near you, then order in a tap — or bring your restaurant onto ZomaFeeds and reach hungry customers instantly.</p>
       <div className="landing-hero-actions">
         <Link to="/user/register" state={{ internal: true }} className="landing-btn landing-btn-primary">I'm hungry — Get started</Link>
+        <Link to="/rider/register" state={{ internal: true }} className="landing-btn landing-btn-ghost">I want to deliver</Link>
         <Link to="/food-partner/register" state={{ internal: true }} className="landing-btn landing-btn-ghost">I run a restaurant</Link>
       </div>
-      <p className="landing-hero-signin">Already on ZomaFeeds? <Link to="/user/login" state={{ internal: true }}>Sign in as customer</Link> · <Link to="/food-partner/login" state={{ internal: true }}>Sign in as partner</Link></p>
+      <p className="landing-hero-signin">Already on ZomaFeeds? <Link to="/user/login" state={{ internal: true }}>Sign in as customer</Link> · <Link to="/rider/login" state={{ internal: true }}>Sign in as rider</Link> · <Link to="/food-partner/login" state={{ internal: true }}>Sign in as partner</Link></p>
     </div>
   </section>
 
@@ -74,17 +83,26 @@ const LandingPage = () => <div className="landing-page">
   <div className="landing-split-wrap">
     <section className="landing-section">
       <div className="landing-section-head">
-        <span className="eyebrow">Two sides, one app</span>
-        <h2>Whichever side of the counter you're on.</h2>
+        <span className="eyebrow">Three sides, one app</span>
+        <h2>Whichever side of the order you're on.</h2>
       </div>
-      <div className="landing-split">
+      <div className="landing-split landing-split--triple">
         <div className="landing-split-col">
+          <span className="landing-split-icon" aria-hidden="true"><Home size={22} /></span>
           <span className="eyebrow">For foodies</span>
           <h3>Watch first. Order when you're convinced.</h3>
           <ul>{USER_POINTS.map(point => <li key={point}><span className="tick">✓</span>{point}</li>)}</ul>
           <Link to="/user/register" state={{ internal: true }} className="landing-btn landing-btn-primary">Create a free account</Link>
         </div>
+        <div className="landing-split-col landing-split-col--rider">
+          <span className="landing-split-icon" aria-hidden="true"><Bike size={22} /></span>
+          <span className="eyebrow">For riders</span>
+          <h3>Ride, deliver, earn — on your schedule.</h3>
+          <ul>{RIDER_POINTS.map(point => <li key={point}><span className="tick">✓</span>{point}</li>)}</ul>
+          <Link to="/rider/register" state={{ internal: true }} className="landing-btn landing-btn-ghost">Start delivering</Link>
+        </div>
         <div className="landing-split-col landing-split-col--partner">
+          <span className="landing-split-icon" aria-hidden="true"><ChefHat size={22} /></span>
           <span className="eyebrow">For restaurants</span>
           <h3>Run your kitchen from one dashboard.</h3>
           <ul>{PARTNER_POINTS.map(point => <li key={point}><span className="tick">✓</span>{point}</li>)}</ul>
@@ -99,6 +117,7 @@ const LandingPage = () => <div className="landing-page">
     <p>It takes less than a minute to get started — with a password or just an email OTP.</p>
     <div className="landing-hero-actions">
       <Link to="/user/register" state={{ internal: true }} className="landing-btn landing-btn-primary">I'm hungry — Get started</Link>
+      <Link to="/rider/register" state={{ internal: true }} className="landing-btn landing-btn-ghost">I want to deliver</Link>
       <Link to="/food-partner/register" state={{ internal: true }} className="landing-btn landing-btn-ghost">I run a restaurant</Link>
     </div>
   </section>

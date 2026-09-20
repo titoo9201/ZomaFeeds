@@ -1,0 +1,37 @@
+@import './theme.css';
+
+.location-prompt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+  margin: 16px 0;
+}
+
+.location-prompt-text { display: grid; gap: 2px; min-width: 200px; }
+.location-prompt-text strong { font-size: .95rem; }
+.location-prompt-text span { color: var(--color-text-secondary); font-size: .82rem; }
+
+.location-prompt-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+.location-prompt-btn { border: 0; border-radius: 999px; padding: 10px 18px; background: var(--button-bg); color: var(--button-text); font-weight: 800; cursor: pointer; font: inherit; white-space: nowrap; }
+.location-prompt-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+.location-prompt-link { border: 0; background: transparent; color: var(--color-text-secondary); text-decoration: underline; cursor: pointer; font: inherit; font-size: .82rem; padding: 0; }
+.location-prompt-link:hover { color: var(--color-accent); }
+
+.location-prompt-form { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.location-prompt-form input { padding: 9px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-bg); color: var(--color-text); font: inherit; min-width: 220px; }
+.location-prompt-form button { border: 0; border-radius: 999px; padding: 9px 16px; background: var(--button-bg); color: var(--button-text); font-weight: 700; cursor: pointer; font: inherit; }
+.location-prompt-form button:disabled { opacity: .6; cursor: not-allowed; }
+
+.location-change-btn { align-self: flex-start; margin-top: 10px; border: 1px solid var(--color-border); border-radius: 999px; padding: 7px 14px; background: var(--color-surface); color: var(--color-text-secondary); font-size: .8rem; font-weight: 700; cursor: pointer; }
+.location-change-btn:hover { color: var(--color-accent); border-color: var(--color-accent); }
+
+.location-reminder-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; border: 1px solid var(--color-warm-accent); border-radius: var(--radius-md); background: color-mix(in srgb, var(--color-warm-accent) 12%, transparent); color: var(--color-text); font-size: .85rem; }
+.location-reminder-banner a { font-weight: 700; }

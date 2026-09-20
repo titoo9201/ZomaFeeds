@@ -6,6 +6,7 @@ const commentModel = require('../models/comment.model');
 const notifyRequestModel = require('../models/notifyRequest.model');
 const notificationModel = require('../models/notification.model');
 const storageService = require('../services/storage.service');
+const mapService = require('../services/map.service');
 const { v4: uuid } = require('uuid');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
@@ -69,7 +70,10 @@ async function getFoodPartnerById(req, res) {
 }
 
 async function listFoodPartners(req, res) {
-    const partners = await foodPartnerModel.find({}).select('-password').lean();
+    const distanceMap = await mapService.getPartnersWithinServiceRadius(req.user.location?.coordinates);
+
+    const query = distanceMap ? { _id: { $in: [...distanceMap.keys()] } } : {};
+    const partners = await foodPartnerModel.find(query).select('-password').lean();
     const foods = await foodModel.find({}).select('_id foodPartner').lean();
 
     const foodIdsByPartner = new Map();
@@ -101,11 +105,12 @@ async function listFoodPartners(req, res) {
             totalMeals: foodIds.length,
             customersServed,
             reviewCount,
-            averageRating: reviewCount ? Number((reviewTotal / reviewCount).toFixed(1)) : 0
+            averageRating: reviewCount ? Number((reviewTotal / reviewCount).toFixed(1)) : 0,
+            distanceKm: distanceMap?.get(String(partner._id))
         };
     });
 
-    res.json({ foodPartners });
+    res.json({ foodPartners, hasUserLocation: Boolean(distanceMap) });
 }
 
 async function getMyProfile(req, res) {
@@ -143,7 +148,7 @@ async function updateHours(req, res) {
 
 async function updateProfile(req, res) {
     try {
-        const { name, contactName, phone, address, restaurantType, email } = req.body;
+        const { name, contactName, phone, address, restaurantType, email, serviceRadiusKm, packagingCharge } = req.body;
         const partner = await foodPartnerModel.findById(req.foodPartner._id);
         if (!partner) return res.status(404).json({ message: 'Food partner account not found' });
 
@@ -156,8 +161,22 @@ async function updateProfile(req, res) {
         if (name?.trim()) partner.name = name.trim();
         if (contactName?.trim()) partner.contactName = contactName.trim();
         if (phone?.trim()) partner.phone = phone.trim();
-        if (address?.trim()) partner.address = address.trim();
+        if (address?.trim() && address.trim() !== partner.address) {
+            partner.address = address.trim();
+            const geocoded = await mapService.geocodeWithFallback(partner.address);
+            if (geocoded) partner.location = { type: 'Point', coordinates: [geocoded.lng, geocoded.lat] };
+        }
         if (restaurantType) partner.restaurantType = restaurantType;
+        if (serviceRadiusKm !== undefined) {
+            const radius = Number(serviceRadiusKm);
+            if (!Number.isFinite(radius) || radius <= 0) return res.status(400).json({ message: 'Service radius must be a positive number' });
+            partner.serviceRadiusKm = radius;
+        }
+        if (packagingCharge !== undefined) {
+            const charge = Number(packagingCharge);
+            if (!Number.isFinite(charge) || charge < 0) return res.status(400).json({ message: 'Packaging charge must be a non-negative number' });
+            partner.packagingCharge = charge;
+        }
         if (req.file) partner.profilePicture = (await storageService.uploadFile(req.file.buffer, `profile-${uuid()}`)).url;
 
         await partner.save({ validateModifiedOnly: true });

@@ -4,6 +4,7 @@ import { Heart, MessageCircle } from 'lucide-react'
 import api from '../../config/api'
 import '../../styles/dashboard.css'
 import '../../styles/profile.css'
+import '../../styles/locationPrompt.css'
 import LoadingState from '../../components/LoadingState'
 
 const EMPTY_STATS = { served: 0, revenue: 0 }
@@ -111,6 +112,11 @@ const Dashboard = () => {
   return <div className="dashboard-page">
     {isLoading ? <LoadingState label="Loading your dashboard..." /> : <>
       {error && <p className="error-text" role="alert">{error}</p>}
+
+      {profile && !profile.location && <div className="location-reminder-banner">
+        <span>Your restaurant isn't geolocated yet — nearby customers won't see you in their feed.</span>
+        <Link className="profile-logout" to="/profile">Set address now</Link>
+      </div>}
 
       <section className="hours-card">
         <div className="hours-status">
@@ -242,7 +248,9 @@ const IncomingOrderCard = ({ order, respondingId, rejectDraftId, rejectReason, o
         </div>
     ) : order.status === 'preparing' || order.status === 'out_for_delivery' ? <div className="incoming-order-actions">
       <span className={`order-pill order-pill--${order.status}`}>{ORDER_PILL_LABEL[order.status]}</span>
-      <button type="button" className="is-accept" onClick={() => onAdvance(order._id)} disabled={Boolean(respondingId)}>{isBusy ? 'Updating...' : order.status === 'preparing' ? 'Mark out for delivery' : 'Mark delivered'}</button>
+      {order.rider
+        ? <span className="order-pill order-pill--out_for_delivery">{order.riderStatus === 'assigned' ? `Rider ${order.rider.name} is heading here for pickup` : `Out for delivery with ${order.rider.name}`}</span>
+        : <button type="button" className="is-accept" onClick={() => onAdvance(order._id)} disabled={Boolean(respondingId)}>{isBusy ? 'Updating...' : order.status === 'preparing' ? 'Mark out for delivery' : 'Mark delivered'}</button>}
     </div>
       : <span className={`order-pill order-pill--${order.status}`}>{ORDER_PILL_LABEL[order.status] || order.status}</span>}
   </article>

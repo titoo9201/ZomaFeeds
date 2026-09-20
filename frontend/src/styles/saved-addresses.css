@@ -1,0 +1,10 @@
+@import './theme.css';
+
+.saved-addresses { display: grid; gap: 14px; }
+.saved-address-card { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 14px 16px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
+.saved-address-card strong { display: block; margin-bottom: 4px; }
+.saved-address-card p { margin: 0; color: var(--color-text-secondary); font-size: .88rem; line-height: 1.4; }
+.saved-address-actions { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; }
+.saved-address-actions button { white-space: nowrap; }
+.saved-address-add-btn { justify-self: start; padding: 9px 16px; border-radius: 999px; border: 1.5px dashed var(--color-border); background: transparent; color: var(--color-text); font-weight: 700; font-size: .85rem; cursor: pointer; }
+.saved-address-add-btn:hover { border-color: var(--color-accent); color: var(--color-accent); }

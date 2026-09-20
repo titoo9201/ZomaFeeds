@@ -1,10 +1,12 @@
 const userModel = require("../models/user.model")
 const foodPartnerModel = require("../models/foodpartner.model")
+const riderModel = require("../models/rider.model")
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const storageService = require('../services/storage.service');
 const mailService = require('../services/mail.service');
 const otpService = require('../services/otp.service');
+const mapService = require('../services/map.service');
 const { v4: uuid } = require('uuid');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
@@ -24,10 +26,10 @@ async function requestOtp(req, res) {
         const { email, role, purpose } = req.body;
 
         if (!EMAIL_REGEX.test(email || '')) return res.status(400).json({ message: 'Please enter a valid email address' });
-        if (!['user', 'foodPartner'].includes(role)) return res.status(400).json({ message: 'Invalid role' });
+        if (!['user', 'foodPartner', 'rider'].includes(role)) return res.status(400).json({ message: 'Invalid role' });
         if (!['register', 'login'].includes(purpose)) return res.status(400).json({ message: 'Invalid purpose' });
 
-        const Model = role === 'user' ? userModel : foodPartnerModel;
+        const Model = role === 'user' ? userModel : role === 'foodPartner' ? foodPartnerModel : riderModel;
         const existingAccount = await Model.findOne({ email });
 
         if (purpose === 'register' && existingAccount) return res.status(400).json({ message: 'An account with this email already exists' });
@@ -172,6 +174,7 @@ async function registerFoodPartner(req, res) {
         }
 
         const profilePicture = req.file ? (await storageService.uploadFile(req.file.buffer, `profile-${uuid()}`)).url : undefined;
+        const geocoded = await mapService.geocodeWithFallback(address);
         const foodPartner = await foodPartnerModel.create({
             name,
             email,
@@ -180,7 +183,8 @@ async function registerFoodPartner(req, res) {
             address,
             contactName,
             profilePicture,
-            restaurantType
+            restaurantType,
+            location: geocoded ? { type: 'Point', coordinates: [geocoded.lng, geocoded.lat] } : undefined
         })
 
         setAuthCookie(res, foodPartner._id, 'foodPartner');
@@ -258,9 +262,8 @@ async function getCurrentSession(req, res) {
     if (!token) return res.status(401).json({ message: 'Not authenticated' });
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const account = decoded.role === 'user'
-            ? await userModel.findById(decoded.id).select('-password')
-            : await foodPartnerModel.findById(decoded.id).select('-password');
+        const Model = decoded.role === 'user' ? userModel : decoded.role === 'foodPartner' ? foodPartnerModel : riderModel;
+        const account = await Model.findById(decoded.id).select('-password');
         if (!account) return res.status(401).json({ message: 'Account not found' });
         return res.json({ role: decoded.role, account });
     } catch {
@@ -287,7 +290,7 @@ async function getUserProfile(req, res) {
 }
 
 async function updateUserProfile(req, res) {
-    const { fullName, email } = req.body;
+    const { fullName, email, phone } = req.body;
     const user = await userModel.findById(req.user._id);
 
     if (email && email !== user.email) {
@@ -297,8 +300,9 @@ async function updateUserProfile(req, res) {
         user.email = email;
     }
     if (fullName?.trim()) user.fullName = fullName.trim();
+    if (phone !== undefined) user.phone = phone.trim();
     if (req.file) user.profilePicture = (await storageService.uploadFile(req.file.buffer, `profile-${uuid()}`)).url;
 
     await user.save();
-    res.json({ user: { _id: user._id, email: user.email, fullName: user.fullName, profilePicture: user.profilePicture } });
+    res.json({ user: { _id: user._id, email: user.email, fullName: user.fullName, phone: user.phone, profilePicture: user.profilePicture } });
 }

@@ -29,9 +29,12 @@
   background: #000;
 }
 
-.reel-video {
+.reel-media {
   position: absolute;
   inset: 0;
+}
+
+.reel-video {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -235,20 +238,22 @@
 .comments-form button:disabled { cursor: wait; opacity: .65; }
 
 @media (max-width: 899.98px) {
-  .reel--shrunk {
+  .reel-media--floating {
+    inset: auto;
     position: fixed;
     top: 14px;
     left: 14px;
     width: 84px;
     height: 130px;
     border-radius: 14px;
+    overflow: hidden;
     box-shadow: 0 10px 28px rgba(0,0,0,.4);
     z-index: 90;
-    scroll-snap-align: none;
   }
-  .reel--shrunk .reel-video { border-radius: 14px; }
-  .reel--shrunk .reel-actions--inline,
-  .reel--shrunk .reel-content { display: none; }
+  .reel--comments-active .reel-actions--inline,
+  .reel--comments-active .reel-content { display: none; }
+
+  .reels-page--comments-open .reels-feed { overflow: hidden; }
 
   .reels-page--comments-open .comments-panel {
     top: 160px;

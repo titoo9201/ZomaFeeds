@@ -7,6 +7,8 @@ import UserRegister from '../pages/auth/UserRegister'
 import UserLogin from '../pages/auth/UserLogin'
 import FoodPartnerRegister from '../pages/auth/FoodPartnerRegister'
 import FoodPartnerLogin from '../pages/auth/FoodPartnerLogin'
+import RiderRegister from '../pages/auth/RiderRegister'
+import RiderLogin from '../pages/auth/RiderLogin'
 import Home from '../pages/general/Home'
 import Reels from '../pages/general/Reels'
 import Saved from '../pages/general/Saved'
@@ -17,8 +19,11 @@ import Profile from '../pages/food-partner/Profile'
 import Dashboard from '../pages/food-partner/Dashboard'
 import ManageFood from '../pages/food-partner/ManageFood'
 import CreateFood from '../pages/food-partner/CreateFood'
+import RiderDashboard from '../pages/rider/RiderDashboard'
+import RiderProfile from '../pages/rider/RiderProfile'
 import BottomNav from '../components/BottomNav'
 import PartnerBottomNav from '../components/PartnerBottomNav'
+import RiderBottomNav from '../components/RiderBottomNav'
 
 const Guard = ({ role, children }) => {
     const location = useLocation()
@@ -39,6 +44,7 @@ const UserShell = ({ children }) => <Guard role="user"><>{children}<BottomNav />
 const CheckoutShell = ({ children }) => <Guard role="user">{children}</Guard>
 const PartnerShell = ({ children }) => <Guard role="foodPartner"><>{children}<PartnerBottomNav /></></Guard>
 const PartnerFocusShell = ({ children }) => <Guard role="foodPartner">{children}</Guard>
+const RiderShell = ({ children }) => <Guard role="rider"><>{children}<RiderBottomNav /></></Guard>
 
 const AppRoutes = () => <Router><Routes>
     <Route path="/" element={<LandingPage />} />
@@ -46,6 +52,8 @@ const AppRoutes = () => <Router><Routes>
     <Route path="/user/login" element={<InternalOnly><UserLogin /></InternalOnly>} />
     <Route path="/food-partner/register" element={<InternalOnly><FoodPartnerRegister /></InternalOnly>} />
     <Route path="/food-partner/login" element={<InternalOnly><FoodPartnerLogin /></InternalOnly>} />
+    <Route path="/rider/register" element={<InternalOnly><RiderRegister /></InternalOnly>} />
+    <Route path="/rider/login" element={<InternalOnly><RiderLogin /></InternalOnly>} />
     <Route path="/home" element={<UserShell><Home /></UserShell>} />
     <Route path="/reels" element={<UserShell><Reels /></UserShell>} />
     <Route path="/saved" element={<UserShell><Saved /></UserShell>} />
@@ -57,6 +65,8 @@ const AppRoutes = () => <Router><Routes>
     <Route path="/create-food" element={<PartnerFocusShell><CreateFood /></PartnerFocusShell>} />
     <Route path="/manage-food/:id" element={<PartnerFocusShell><ManageFood /></PartnerFocusShell>} />
     <Route path="/profile" element={<PartnerShell><Profile /></PartnerShell>} />
+    <Route path="/rider/dashboard" element={<RiderShell><RiderDashboard /></RiderShell>} />
+    <Route path="/rider/profile" element={<RiderShell><RiderProfile /></RiderShell>} />
     <Route path="*" element={<Navigate to="/" replace />} />
 </Routes></Router>
 

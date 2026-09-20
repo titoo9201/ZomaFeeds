@@ -3,9 +3,12 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import api from '../../config/api'
 import '../../styles/profile.css'
 import '../../styles/edit-profile.css'
+import '../../styles/locationPrompt.css'
 import LoadingState from '../../components/LoadingState'
 import PageNav from '../../components/PageNav'
 import { clearCartItem } from '../../config/cart'
+import AddressFields from '../../components/AddressFields'
+import { EMPTY_ADDRESS, formatAddress } from '../../config/address'
 
 const Profile = () => {
   const { id } = useParams()
@@ -19,7 +22,8 @@ const Profile = () => {
   const [error, setError] = useState('')
   const [isNotifyRequested, setIsNotifyRequested] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-  const [editFields, setEditFields] = useState({ name: '', contactName: '', phone: '', address: '', email: '', restaurantType: 'Both' })
+  const [editFields, setEditFields] = useState({ name: '', contactName: '', phone: '', email: '', restaurantType: 'Both', serviceRadiusKm: 5, packagingCharge: 0 })
+  const [addressFields, setAddressFields] = useState(EMPTY_ADDRESS)
   const [editPicture, setEditPicture] = useState(null)
   const [editPreview, setEditPreview] = useState('')
   const [isSaving, setIsSaving] = useState(false)
@@ -60,7 +64,8 @@ const Profile = () => {
   }
 
   const startEditing = () => {
-    setEditFields({ name: profile?.name || '', contactName: profile?.contactName || '', phone: profile?.phone || '', address: profile?.address || '', email: profile?.email || '', restaurantType: profile?.restaurantType || 'Both' })
+    setEditFields({ name: profile?.name || '', contactName: profile?.contactName || '', phone: profile?.phone || '', email: profile?.email || '', restaurantType: profile?.restaurantType || 'Both', serviceRadiusKm: profile?.serviceRadiusKm || 5, packagingCharge: profile?.packagingCharge || 0 })
+    setAddressFields(EMPTY_ADDRESS)
     setEditPicture(null)
     setEditError('')
     setIsEditing(true)
@@ -75,6 +80,8 @@ const Profile = () => {
       setEditError('')
       const formData = new FormData()
       Object.entries(editFields).forEach(([key, value]) => formData.append(key, value))
+      const address = formatAddress(addressFields)
+      if (address) formData.append('address', address)
       if (editPicture) formData.append('profilePicture', editPicture)
       const { data } = await api.patch('/api/food-partner/me', formData)
       setProfile(previous => ({ ...previous, ...data.foodPartner }))
@@ -108,14 +115,30 @@ const Profile = () => {
         <div className="field-group"><label htmlFor="editPhone">Phone</label><input id="editPhone" type="tel" value={editFields.phone} onChange={event => updateField('phone', event.target.value)} required /></div>
         <div className="field-group"><label htmlFor="editEmail">Email</label><input id="editEmail" type="email" value={editFields.email} onChange={event => updateField('email', event.target.value)} required /></div>
       </div>
-      <div className="field-group"><label htmlFor="editAddress">Address</label><input id="editAddress" type="text" value={editFields.address} onChange={event => updateField('address', event.target.value)} required /></div>
       <div className="field-group">
-        <label htmlFor="editRestaurantType">Restaurant type</label>
-        <select id="editRestaurantType" value={editFields.restaurantType} onChange={event => updateField('restaurantType', event.target.value)}>
-          <option value="Veg">Veg</option>
-          <option value="Non-Veg">Non-Veg</option>
-          <option value="Both">Both</option>
-        </select>
+        <label>Address</label>
+        <p className="small-note">Currently saved: {profile?.address || 'not set'}</p>
+        <AddressFields value={addressFields} onChange={setAddressFields} idPrefix="edit-address" required={false} />
+        <p className="small-note">Fill this in only if you want to update your address — saving it updates your map location automatically.</p>
+      </div>
+      <div className="edit-profile-two-col">
+        <div className="field-group">
+          <label htmlFor="editRestaurantType">Restaurant type</label>
+          <select id="editRestaurantType" value={editFields.restaurantType} onChange={event => updateField('restaurantType', event.target.value)}>
+            <option value="Veg">Veg</option>
+            <option value="Non-Veg">Non-Veg</option>
+            <option value="Both">Both</option>
+          </select>
+        </div>
+        <div className="field-group">
+          <label htmlFor="editServiceRadius">Service radius (km)</label>
+          <input id="editServiceRadius" type="number" min="0.5" max="50" step="0.5" value={editFields.serviceRadiusKm} onChange={event => updateField('serviceRadiusKm', event.target.value)} required />
+        </div>
+      </div>
+      <div className="field-group">
+        <label htmlFor="editPackagingCharge">Packaging charge (₹, optional)</label>
+        <input id="editPackagingCharge" type="number" min="0" step="1" value={editFields.packagingCharge} onChange={event => updateField('packagingCharge', event.target.value)} />
+        <p className="small-note">Added to every order's bill as a separate line item. Leave at 0 if you don't charge for packaging.</p>
       </div>
       {editError && <p className="error-text" role="alert">{editError}</p>}
       <div className="form-actions">
@@ -125,6 +148,11 @@ const Profile = () => {
     </form>}
 
     {error && <p className="error-text" role="alert">{error}</p>}
+
+    {!id && !isEditing && profile && !profile.location && <div className="location-reminder-banner">
+      <span>Your restaurant isn't geolocated yet — nearby customers won't see you in their feed.</span>
+      <button type="button" className="profile-logout" onClick={startEditing}>Set address now</button>
+    </div>}
 
     {isClosed && <section className="profile-header" style={{ borderColor: 'var(--color-danger)' }}>
       <strong>This restaurant is currently closed.</strong>

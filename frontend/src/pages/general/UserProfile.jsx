@@ -5,6 +5,7 @@ import '../../styles/profile.css'
 import '../../styles/edit-profile.css'
 import LoadingState from '../../components/LoadingState'
 import PageNav from '../../components/PageNav'
+import SavedAddresses from '../../components/SavedAddresses'
 import { clearCartItem } from '../../config/cart'
 
 const ORDER_STATUS_LABEL = { pending: 'Pending', preparing: 'Preparing', out_for_delivery: 'Out for delivery', delivered: 'Delivered', cancelled: 'Cancelled' }
@@ -19,6 +20,7 @@ const UserProfile = () => {
   const [isEditing, setIsEditing] = useState(false)
   const [editName, setEditName] = useState('')
   const [editEmail, setEditEmail] = useState('')
+  const [editPhone, setEditPhone] = useState('')
   const [editPicture, setEditPicture] = useState(null)
   const [editPreview, setEditPreview] = useState('')
   const [isSaving, setIsSaving] = useState(false)
@@ -55,6 +57,7 @@ const UserProfile = () => {
   const startEditing = () => {
     setEditName(profile?.fullName || '')
     setEditEmail(profile?.email || '')
+    setEditPhone(profile?.phone || '')
     setEditPicture(null)
     setEditError('')
     setIsEditing(true)
@@ -74,6 +77,7 @@ const UserProfile = () => {
       const formData = new FormData()
       formData.append('fullName', editName)
       formData.append('email', editEmail)
+      formData.append('phone', editPhone)
       if (editPicture) formData.append('profilePicture', editPicture)
       const { data } = await api.patch('/api/auth/user/profile', formData)
       setProfile(data.user)
@@ -118,6 +122,10 @@ const UserProfile = () => {
           <input id="editEmail" type="email" value={editEmail} onChange={event => setEditEmail(event.target.value)} required />
         </div>
       </div>
+      <div className="field-group">
+        <label htmlFor="editPhone">Phone <span className="small-note">(so your delivery partner can reach you)</span></label>
+        <input id="editPhone" type="tel" value={editPhone} onChange={event => setEditPhone(event.target.value)} placeholder="+91 xxxxx-xxxxx" />
+      </div>
       {editError && <p className="error-text" role="alert">{editError}</p>}
       <div className="form-actions">
         <button className="btn-primary" type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : 'Save changes'}</button>
@@ -126,6 +134,10 @@ const UserProfile = () => {
     </form>}
 
     {error && <p className="error-text">{error}</p>}
+    <section className="profile-orders">
+      <div className="section-heading"><h2>Saved addresses</h2></div>
+      <SavedAddresses showDelete />
+    </section>
     {unreadNotifications.length > 0 && <section className="profile-orders">
       <div className="section-heading"><h2>Notifications</h2><span>{unreadNotifications.length} new</span></div>
       {unreadNotifications.map(item => <article className="order-row" key={item._id}>

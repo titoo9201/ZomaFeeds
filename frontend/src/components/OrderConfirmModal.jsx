@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import api from '../config/api'
 
-const OrderConfirmModal = ({ order, onDone }) => {
+const OrderConfirmModal = ({ order, onDone, heading = 'Order confirmed!', message }) => {
   const [rating, setRating] = useState(0)
   const [text, setText] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -10,6 +10,7 @@ const OrderConfirmModal = ({ order, onDone }) => {
 
   const foodName = order.food?.name || 'your food'
   const restaurantName = order.food?.foodPartner?.name || 'The restaurant'
+  const bodyMessage = message ?? `${restaurantName} has accepted your order and started preparing ${foodName}.${order.paymentMethod === 'cod' ? ` Keep ₹${order.total} ready in cash for the delivery partner.` : ` Payment received via ${order.paymentMethod?.toUpperCase()}.`}`
 
   const submitReview = async event => {
     event.preventDefault()
@@ -29,8 +30,8 @@ const OrderConfirmModal = ({ order, onDone }) => {
   return <div className="order-modal-backdrop" role="dialog" aria-modal="true" aria-label="Order confirmation">
     <div className="order-modal">
       <div className="order-modal-icon" aria-hidden="true">✓</div>
-      <h2>Order confirmed!</h2>
-      <p>{restaurantName} has accepted your order and started preparing {foodName}.{order.paymentMethod === 'cod' ? ` Keep ₹${order.total} ready in cash for the delivery partner.` : ` Payment received via ${order.paymentMethod?.toUpperCase()}.`}</p>
+      <h2>{heading}</h2>
+      <p>{bodyMessage}</p>
 
       {!submitted && <form className="order-modal-review" onSubmit={submitReview}>
         <h3>Rate {foodName}</h3>

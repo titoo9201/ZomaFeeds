@@ -16,12 +16,32 @@ const userSchema = new mongoose.Schema({
     },
     profilePicture: {
         type: String
-    }
+    },
+    phone: {
+        type: String,
+        trim: true
+    },
+    location: {
+        type: { type: String, enum: ['Point'] },
+        coordinates: { type: [Number] }
+    },
+    savedAddresses: [{
+        label: { type: String, enum: ['Home', 'Girlfriend', 'Boyfriend', 'Friend', 'Relative', 'Other'], default: 'Home' },
+        customLabel: { type: String, trim: true },
+        houseNo: { type: String, trim: true },
+        street: { type: String, trim: true },
+        city: { type: String, trim: true },
+        state: { type: String, trim: true },
+        pincode: { type: String, trim: true },
+        address: { type: String, trim: true, required: true }
+    }]
 },
     {
         timestamps: true
     }
 )
+
+userSchema.index({ location: '2dsphere' });
 
 const userModel = mongoose.model("user", userSchema);
 

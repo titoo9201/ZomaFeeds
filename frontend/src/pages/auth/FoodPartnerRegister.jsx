@@ -5,11 +5,14 @@ import api from '../../config/api';
 import { useNavigate } from 'react-router-dom';
 import AuthCredentialField from '../../components/AuthCredentialField';
 import AuthClose from '../../components/AuthClose';
+import AddressFields from '../../components/AddressFields';
+import { EMPTY_ADDRESS, formatAddress } from '../../config/address';
 
 const FoodPartnerRegister = () => {
 
   const navigate = useNavigate()
   const [email, setEmail] = useState('');
+  const [addressFields, setAddressFields] = useState(EMPTY_ADDRESS);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -21,7 +24,7 @@ const FoodPartnerRegister = () => {
     const phone = e.target.phone.value;
     const password = e.target.password?.value;
     const otp = e.target.otp?.value;
-    const address = e.target.address.value;
+    const address = formatAddress(addressFields);
     const restaurantType = e.target.restaurantType.value;
     const profilePicture = e.target.profilePicture.files[0];
 
@@ -80,9 +83,9 @@ const FoodPartnerRegister = () => {
             </div>
           <AuthCredentialField role="foodPartner" purpose="register" email={email} />
           <div className="field-group">
-            <label htmlFor="address">Address</label>
-            <input id="address" name="address" placeholder="123 Market Street" autoComplete="street-address" required />
-            <p className="small-note">Full address helps customers find you faster.</p>
+            <label>Address</label>
+            <AddressFields value={addressFields} onChange={setAddressFields} idPrefix="reg-address" />
+            <p className="small-note">An exact address helps customers find you faster and keeps delivery tracking accurate.</p>
           </div>
           <div className="field-group">
             <label htmlFor="restaurantType">Restaurant type</label>

@@ -8,6 +8,7 @@ const ReelIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y
 const SaveIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17l-6-3-6 3z" /></svg>
 const ProfileIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5" /><path d="M5 21a7 7 0 0 1 14 0" /></svg>
 const CartIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="20" r="1.3" /><circle cx="17" cy="20" r="1.3" /><path d="M3 4h2l2 11h10l2-8H6" /></svg>
+const TrackIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2-7 4 14 2-7h6" /></svg>
 
 const baseItems = [
   { to: '/home', label: 'Home', Icon: HomeIcon, end: true },
@@ -27,7 +28,9 @@ const BottomNav = () => {
   }, [])
 
   const items = cartItem
-    ? [...baseItems.slice(0, 3), { to: cartItem.orderId ? `/payment/${cartItem.orderId}` : `/order/${cartItem.foodId}`, label: 'Cart', Icon: CartIcon }, baseItems[3]]
+    ? [...baseItems.slice(0, 3), cartItem.orderId
+      ? { to: `/payment/${cartItem.orderId}`, label: 'Track', Icon: TrackIcon }
+      : { to: `/order/${cartItem.foodId}`, label: 'Cart', Icon: CartIcon }, baseItems[3]]
     : baseItems
 
   return <nav className="bottom-nav" aria-label="Primary navigation">
