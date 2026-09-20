@@ -142,6 +142,23 @@ function extractLatLngFromUrl(urlString) {
     return null;
 }
 
+// A link shared from a Google Maps *place card* (a named business/POI, as opposed to a
+// "dropped pin") encodes location as a place name + an opaque CID feature ID
+// (.../data=!4m2!3m1!1s0x...:0x...!...) — there's no lat/lng anywhere in that URL at all, and
+// resolving a CID to coordinates needs a paid Google Places API call. But the readable address
+// is right there in the URL path (.../maps/place/<address, +-separated>/data=...), so we
+// extract and geocode that as a best-effort starting point — PinConfirmMap lets the user drag
+// to the exact spot regardless, so an approximate geocode here is fine.
+function extractPlaceAddressFromUrl(urlString) {
+    const match = urlString.match(/\/maps\/place\/([^/?]+)/);
+    if (!match) return null;
+    try {
+        return decodeURIComponent(match[1].replace(/\+/g, ' '));
+    } catch {
+        return match[1].replace(/\+/g, ' ');
+    }
+}
+
 // Short links (maps.app.goo.gl/..., goo.gl/maps/...) carry no coordinates in the URL itself —
 // they redirect to the real long-form URL, so we follow the redirect chain server-side first.
 async function parseMapsLink(rawUrl) {
@@ -161,7 +178,14 @@ async function parseMapsLink(rawUrl) {
             validateStatus: status => status < 400
         });
         const resolvedUrl = response.request?.res?.responseUrl || url.href;
-        const resolved = extractLatLngFromUrl(resolvedUrl) || extractLatLngFromUrl(String(response.data).slice(0, 20000));
+
+        let resolved = extractLatLngFromUrl(resolvedUrl) || extractLatLngFromUrl(String(response.data).slice(0, 20000));
+        if (!resolved) {
+            // No coordinates anywhere — this is likely a "place" link (named business/POI)
+            // whose only location info is a readable address in the URL path. Geocode that.
+            const placeAddress = extractPlaceAddressFromUrl(resolvedUrl);
+            if (placeAddress) resolved = await geocodeWithFallback(placeAddress);
+        }
         if (!resolved) return null;
         return isWithinIndia(resolved.lat, resolved.lng) ? resolved : null;
     } catch (error) {
