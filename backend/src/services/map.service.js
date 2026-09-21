@@ -150,22 +150,51 @@ function extractPlaceAddressFromUrl(urlString) {
     }
 }
 
-// A "dropped pin"/"your location" share encodes the same slot as raw "<lat>,<lng>" text
-// (e.g. .../maps/place/28.676880,77.489412/data=...) — that's not a readable address, just
-// the coordinates again, so callers that want a genuine address to display should discard it.
-const COORDS_AS_TEXT_PATTERN = /^-?\d{1,3}\.\d+,\s*-?\d{1,3}\.\d+$/;
+// A "dropped pin"/"your location" share encodes the same slot as the coordinates themselves,
+// in one of two formats Google uses — plain decimal ("28.676880,77.489412") or degrees-minutes-
+// seconds ("28°40'36.8"N 77°29'21.9"E") — neither is a readable address, so callers that want a
+// genuine address to display should discard it (and reverse-geocode the point instead).
+const COORDS_AS_TEXT_PATTERNS = [
+    /^-?\d{1,3}\.\d+,\s*-?\d{1,3}\.\d+$/,
+    /^\d{1,3}°\d{1,2}'[\d.]+"?\s*[NS]\s+\d{1,3}°\d{1,2}'[\d.]+"?\s*[EW]$/i
+];
 
 function extractReadablePlaceAddress(urlString) {
     const raw = extractPlaceAddressFromUrl(urlString);
-    if (!raw || COORDS_AS_TEXT_PATTERN.test(raw)) return null;
+    if (!raw || COORDS_AS_TEXT_PATTERNS.some(pattern => pattern.test(raw))) return null;
     return raw;
+}
+
+// Turns a reverseGeocode() result into a short display string — display only, never re-used
+// for distance/range (which always works off the confirmed pin's lat/lng directly). Includes
+// the pincode: OSM frequently has no road/locality name at all for smaller residential streets
+// (verified — even at every zoom level, some addresses come back as just city/state), so the
+// pincode is often the only extra specificity available; the user fills in house no./locality
+// themselves in the same editable field for exactly this reason.
+function formatReverseGeocodedAddress(reverseGeocoded) {
+    if (!reverseGeocoded) return null;
+    const { street, city, state, pincode } = reverseGeocoded;
+    const label = [street, city, state, pincode].map(part => part?.trim()).filter(Boolean).join(', ');
+    return label || null;
+}
+
+// A "dropped pin"/"share my current location" link (as opposed to a shared business) has no
+// place-name text anywhere in the URL — the only way to get *something* readable instead of
+// raw coordinates is to reverse-geocode the point we just resolved.
+async function reverseGeocodedFallbackAddress(point) {
+    try {
+        return formatReverseGeocodedAddress(await reverseGeocode(point.lat, point.lng));
+    } catch {
+        return null;
+    }
 }
 
 // Short links (maps.app.goo.gl/..., goo.gl/maps/...) carry no coordinates in the URL itself —
 // they redirect to the real long-form URL, so we follow the redirect chain server-side first.
-// Returns { lat, lng, placeAddress } — placeAddress is the readable address Google itself put
-// in the URL (only present for "place" links, e.g. a shared business), so callers can use it
-// as the display address instead of a fresh (and often lower-quality) reverse-geocode.
+// Returns { lat, lng, placeAddress } — placeAddress is, in priority order: the readable address
+// Google itself put in the URL (a shared business/POI link), or a reverse-geocode of the
+// resolved point (a "dropped pin"/"my location" link, which has no place-name text at all) —
+// either way, callers get *something* readable instead of raw coordinates whenever possible.
 async function parseMapsLink(rawUrl) {
     let url;
     try { url = new URL(rawUrl.trim()); } catch { return null; }
@@ -174,7 +203,8 @@ async function parseMapsLink(rawUrl) {
     const direct = extractLatLngFromUrl(url.href);
     if (direct) {
         if (!isWithinIndia(direct.lat, direct.lng)) return null;
-        return { ...direct, placeAddress: extractReadablePlaceAddress(url.href) };
+        const placeAddress = extractReadablePlaceAddress(url.href) || await reverseGeocodedFallbackAddress(direct);
+        return { ...direct, placeAddress };
     }
 
     // No coordinates in the short link itself — resolve it to its final long-form URL.
@@ -186,7 +216,7 @@ async function parseMapsLink(rawUrl) {
             validateStatus: status => status < 400
         });
         const resolvedUrl = response.request?.res?.responseUrl || url.href;
-        const placeAddress = extractReadablePlaceAddress(resolvedUrl);
+        let placeAddress = extractReadablePlaceAddress(resolvedUrl);
 
         let resolved = extractLatLngFromUrl(resolvedUrl) || extractLatLngFromUrl(String(response.data).slice(0, 20000));
         if (!resolved) {
@@ -196,6 +226,7 @@ async function parseMapsLink(rawUrl) {
             if (fallbackAddress) resolved = await geocodeWithFallback(fallbackAddress);
         }
         if (!resolved || !isWithinIndia(resolved.lat, resolved.lng)) return null;
+        if (!placeAddress) placeAddress = await reverseGeocodedFallbackAddress(resolved);
         return { ...resolved, placeAddress };
     } catch (error) {
         console.error('[map.service] parseMapsLink failed to resolve short link:', error.message);

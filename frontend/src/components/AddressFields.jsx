@@ -86,7 +86,7 @@ const AddressFields = ({ value, onChange, idPrefix = 'addr' }) => {
         onChange={event => onChange({ ...value, address: event.target.value })}
         placeholder="e.g. Flat 201, ABC Apartments, Near Shivalik Hospital"
       />
-      <p className="small-note">Auto-filled from Google Maps when available — edit freely to add your flat/shop number. Shown to the rider/restaurant; not used to find your location, which always comes from the pin above.</p>
+      <p className="small-note">Auto-filled when possible, but maps data for smaller streets is often just the city/pincode — add your house/shop no. and locality name yourself so the rider can actually recognise it. Shown to the rider/restaurant only; not used to find your location, which always comes from the pin above.</p>
     </div>
 
     {hasPin

@@ -36,12 +36,7 @@ async function getSavedAddresses(req, res) {
     res.json({ addresses: user.savedAddresses });
 }
 
-// A saved address's whole purpose is its location, set via GPS or a pasted Maps link and
-// confirmed on PinConfirmMap — there's no free text to fall back to geocoding anymore. The
-// address text is a single editable field on the frontend (pre-filled from a Maps link's own
-// address when available, but freely editable — e.g. to add a flat/shop number) — whatever the
-// user ultimately submits is trusted and saved as-is, with a plain coordinate string as the only
-// fallback if they leave it empty (cosmetic only, never re-used for distance/range).
+
 function resolveDisplayAddress(address, lat, lng) {
     if (address?.trim()) return address.trim();
     return `Pinned location (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
