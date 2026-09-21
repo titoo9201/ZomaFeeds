@@ -27,11 +27,12 @@ const RiderReachScreen = ({ order, riderPos: riderFix, mode, onReached }) => {
   }, [order._id, riderFix])
 
   const isPickup = mode === 'pickup'
+  const restaurant = order.items?.[0]?.food?.foodPartner
   const destination = isPickup ? order.pickupLocation : order.dropLocation
   const destinationIcon = isPickup ? RESTAURANT_ICON : CUSTOMER_ICON
-  const contactName = isPickup ? (order.food?.foodPartner?.name || 'Restaurant') : (order.user?.fullName || 'Customer')
-  const contactAddress = isPickup ? order.food?.foodPartner?.address : order.address
-  const contactPhone = isPickup ? order.food?.foodPartner?.phone : order.user?.phone
+  const contactName = isPickup ? (restaurant?.name || 'Restaurant') : (order.user?.fullName || 'Customer')
+  const contactAddress = isPickup ? restaurant?.address : order.address
+  const contactPhone = isPickup ? restaurant?.phone : order.user?.phone
   const mapsUrl = destination?.lat != null ? `https://www.google.com/maps/dir/?api=1&destination=${destination.lat},${destination.lng}&travelmode=driving` : null
 
   return <div className="rider-flow-overlay">
@@ -61,7 +62,7 @@ const RiderReachScreen = ({ order, riderPos: riderFix, mode, onReached }) => {
         </div>
         <div className="flow-meta-row">
           <span>Order: {String(order._id).slice(-10)}</span>
-          {isPickup ? <span>· Customer: {order.user?.fullName || 'Customer'}</span> : <span>· Pickup: {order.food?.foodPartner?.name}</span>}
+          {isPickup ? <span>· Customer: {order.user?.fullName || 'Customer'}</span> : <span>· Pickup: {restaurant?.name}</span>}
         </div>
         <SwipeToConfirm label={`Swipe — reached ${isPickup ? 'pickup' : 'drop'} location`} onConfirm={onReached} />
       </div>

@@ -3,8 +3,17 @@ const mongoose = require("mongoose");
 const orderSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "user", required: true },
-    food: { type: mongoose.Schema.Types.ObjectId, ref: "food", required: true },
-    quantity: { type: Number, required: true, min: 1, max: 50 },
+    // Every item in an order must come from the same restaurant (enforced both client-side by
+    // the cart and re-validated server-side in resolveCartItems) — a single order can still
+    // carry multiple dishes from that one restaurant.
+    items: {
+      type: [{
+        food: { type: mongoose.Schema.Types.ObjectId, ref: "food", required: true },
+        quantity: { type: Number, required: true, min: 1, max: 50 },
+      }],
+      required: true,
+      validate: { validator: value => Array.isArray(value) && value.length > 0, message: "An order needs at least one item" },
+    },
     address: { type: String, required: true, trim: true },
     status: {
       type: String,

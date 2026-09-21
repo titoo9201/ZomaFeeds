@@ -82,14 +82,13 @@ async function sendWelcomeEmail(email, name) {
 }
 
 function billTable(order) {
-    const foodName = order.food?.name || 'Food item';
+    const itemLines = (order.items || []).map(item => `${item.food?.name || 'Item'} × ${item.quantity}`).join('<br/>') || 'Food item';
     const b = order.billBreakdown || {};
     const itemsTotal = b.itemsTotal ?? order.total;
     const row = (label, value) => `<tr><td style="padding:8px 0;color:${TEXT_MUTED};font-size:14px;">${label}</td><td style="padding:8px 0;text-align:right;color:${TEXT_MAIN};font-size:14px;">${value}</td></tr>`;
     return `
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 20px;">
-            <tr><td style="padding:8px 0;color:${TEXT_MUTED};font-size:14px;">Item</td><td style="padding:8px 0;text-align:right;color:${TEXT_MAIN};font-size:14px;font-weight:600;">${foodName}</td></tr>
-            <tr><td style="padding:8px 0;color:${TEXT_MUTED};font-size:14px;">Quantity</td><td style="padding:8px 0;text-align:right;color:${TEXT_MAIN};font-size:14px;">${order.quantity}</td></tr>
+            <tr><td style="padding:8px 0;color:${TEXT_MUTED};font-size:14px;vertical-align:top;">Items</td><td style="padding:8px 0;text-align:right;color:${TEXT_MAIN};font-size:14px;font-weight:600;">${itemLines}</td></tr>
             ${row('Item total', `₹${itemsTotal}`)}
             ${b.restaurantGST != null ? row('Restaurant GST', `₹${b.restaurantGST}`) : ''}
             ${b.packagingCharge > 0 ? row('Packaging charge', `₹${b.packagingCharge}`) : ''}
@@ -105,7 +104,7 @@ function billTable(order) {
 }
 
 async function sendOrderBillEmail(email, order) {
-    const restaurantName = order.food?.foodPartner?.name || 'The restaurant';
+    const restaurantName = order.items?.[0]?.food?.foodPartner?.name || 'The restaurant';
     const bodyHtml = `
         ${paragraph(`Great news — <strong>${restaurantName}</strong> has accepted your order and started preparing it.`)}
         ${billTable(order)}
@@ -120,8 +119,8 @@ async function sendOrderBillEmail(email, order) {
 }
 
 async function sendOrderOutForDeliveryEmail(email, order) {
-    const foodName = order.food?.name || 'Your food';
-    const restaurantName = order.food?.foodPartner?.name || 'the restaurant';
+    const foodName = (order.items || []).map(item => item.food?.name).filter(Boolean).join(', ') || 'Your food';
+    const restaurantName = order.items?.[0]?.food?.foodPartner?.name || 'the restaurant';
     const bodyHtml = `
         ${paragraph(`<strong>${foodName}</strong> from <strong>${restaurantName}</strong> has left the kitchen and is on its way to you. 🛵💨`)}
         <p style="margin:0 0 20px;color:${TEXT_MUTED};font-size:13px;">Delivering to: ${order.address}</p>
@@ -135,7 +134,7 @@ async function sendOrderOutForDeliveryEmail(email, order) {
 }
 
 async function sendOrderDeliveredEmail(email, order) {
-    const foodName = order.food?.name || 'Your food';
+    const foodName = (order.items || []).map(item => item.food?.name).filter(Boolean).join(', ') || 'Your food';
     const bodyHtml = `
         ${paragraph('Your order has been delivered successfully! 🎉')}
         ${paragraph(`We hope you enjoy <strong>${foodName}</strong>. If you liked it, don't forget to rate the restaurant and your delivery partner on the app.`)}

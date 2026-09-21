@@ -52,8 +52,8 @@ const NewOrderCard = ({ order, riderPos, onAccept, onDeny, isAccepting }) => {
 
       <div className="new-order-pickup-card">
         <p className="new-order-pickup-label">Pickup from</p>
-        <p className="new-order-pickup-name">{order.food?.foodPartner?.name || 'Restaurant'}</p>
-        <p className="new-order-pickup-address">{order.food?.foodPartner?.address}</p>
+        <p className="new-order-pickup-name">{order.items?.[0]?.food?.foodPartner?.name || 'Restaurant'}</p>
+        <p className="new-order-pickup-address">{order.items?.[0]?.food?.foodPartner?.address}</p>
         {etaMinutes != null && <p className="new-order-eta">🕒 {etaMinutes} min{etaMinutes > 1 ? 's' : ''} away</p>}
       </div>
 

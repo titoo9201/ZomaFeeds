@@ -6,7 +6,7 @@ import '../../styles/edit-profile.css'
 import '../../styles/locationPrompt.css'
 import LoadingState from '../../components/LoadingState'
 import PageNav from '../../components/PageNav'
-import { clearCartItem } from '../../config/cart'
+import { clearCart, clearActiveOrderId } from '../../config/cart'
 import AddressFields from '../../components/AddressFields'
 import { EMPTY_ADDRESS } from '../../config/address'
 
@@ -55,7 +55,7 @@ const Profile = () => {
   }, [menuSearch, selectedCategory, videos])
 
   const logout = async () => {
-    try { setIsLoggingOut(true); await api.get('/api/auth/food-partner/logout'); clearCartItem(); navigate('/', { replace: true }) } catch { setError('Unable to log out right now.'); setIsLoggingOut(false) }
+    try { setIsLoggingOut(true); await api.get('/api/auth/food-partner/logout'); clearCart(); clearActiveOrderId(); navigate('/', { replace: true }) } catch { setError('Unable to log out right now.'); setIsLoggingOut(false) }
   }
   const focusMenu = () => menuRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 

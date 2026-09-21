@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import '../styles/bottom-nav.css'
-import { getCartItem, CART_EVENT } from '../config/cart'
+import { getCartItemCount, getActiveOrderId, CART_EVENT } from '../config/cart'
 
 const HomeIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5" /><path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10" /></svg>
 const ReelIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="m9 3 2 4m4-4 2 4M9 11l6 3-6 3z" /></svg>
@@ -18,27 +18,33 @@ const baseItems = [
 ]
 
 const BottomNav = () => {
-  const [cartItem, setCartItem] = useState(getCartItem)
+  const [cartCount, setCartCount] = useState(getCartItemCount)
+  const [activeOrderId, setActiveOrderId] = useState(getActiveOrderId)
 
   useEffect(() => {
-    const sync = () => setCartItem(getCartItem())
+    const sync = () => { setCartCount(getCartItemCount()); setActiveOrderId(getActiveOrderId()) }
     window.addEventListener(CART_EVENT, sync)
     window.addEventListener('storage', sync)
     return () => { window.removeEventListener(CART_EVENT, sync); window.removeEventListener('storage', sync) }
   }, [])
 
-  const items = cartItem
-    ? [...baseItems.slice(0, 3), cartItem.orderId
-      ? { to: `/payment/${cartItem.orderId}`, label: 'Track', Icon: TrackIcon }
-      : { to: `/order/${cartItem.foodId}`, label: 'Cart', Icon: CartIcon }, baseItems[3]]
-    : baseItems
+  // An in-progress order being tracked takes priority over the shopping cart in the nav slot —
+  // once an order is placed the cart itself is already cleared, so these never overlap anyway.
+  const items = activeOrderId
+    ? [...baseItems.slice(0, 3), { to: `/payment/${activeOrderId}`, label: 'Track', Icon: TrackIcon }, baseItems[3]]
+    : cartCount > 0
+      ? [...baseItems.slice(0, 3), { to: '/cart', label: 'Cart', Icon: CartIcon, badge: cartCount }, baseItems[3]]
+      : baseItems
 
   return <nav className="bottom-nav" aria-label="Primary navigation">
     <div className="bottom-nav__inner">
       {items.map(item => {
         const IconComponent = item.Icon
         return <NavLink key={item.label} to={item.to} end={item.end} className={({ isActive }) => `bottom-nav__item ${isActive ? 'is-active' : ''}`}>
-          <span className="bottom-nav__icon"><IconComponent /></span>
+          <span className="bottom-nav__icon">
+            <IconComponent />
+            {item.badge > 0 && <span className="bottom-nav__badge">{item.badge}</span>}
+          </span>
           <span className="bottom-nav__label">{item.label}</span>
         </NavLink>
       })}

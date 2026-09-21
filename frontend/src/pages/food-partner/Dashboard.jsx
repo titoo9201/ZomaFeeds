@@ -233,7 +233,7 @@ const ORDER_PILL_LABEL = { preparing: 'Preparing', out_for_delivery: 'Out for de
 const IncomingOrderCard = ({ order, respondingId, rejectDraftId, rejectReason, onSetRejectReason, onStartReject, onCancelReject, onRespond, onAdvance }) => {
   const isBusy = respondingId === order._id
   return <article className="incoming-order">
-    <div className="incoming-order-main"><strong>{order.food?.name}</strong><span>{order.quantity} item(s) · {order.user?.fullName || 'Customer'}</span><small>{order.address}</small></div>
+    <div className="incoming-order-main"><strong>{(order.items || []).map(item => item.food?.name).filter(Boolean).join(', ')}</strong><span>{(order.items || []).reduce((sum, item) => sum + item.quantity, 0)} item(s) · {order.user?.fullName || 'Customer'}</span><small>{order.address}</small></div>
     {order.status === 'pending' ? (
       rejectDraftId === order._id ? <div className="incoming-order-reject">
         <input value={rejectReason} onChange={event => onSetRejectReason(event.target.value)} placeholder="Reason for rejecting" />

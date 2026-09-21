@@ -6,7 +6,7 @@ import '../../styles/edit-profile.css'
 import LoadingState from '../../components/LoadingState'
 import PageNav from '../../components/PageNav'
 import SavedAddresses from '../../components/SavedAddresses'
-import { clearCartItem } from '../../config/cart'
+import { clearCart, clearActiveOrderId } from '../../config/cart'
 
 const ORDER_STATUS_LABEL = { pending: 'Pending', preparing: 'Preparing', out_for_delivery: 'Out for delivery', delivered: 'Delivered', cancelled: 'Cancelled' }
 
@@ -46,7 +46,7 @@ const UserProfile = () => {
   }, [editPicture])
 
   const logout = async () => {
-    try { setIsLoggingOut(true); await api.get('/api/auth/user/logout'); clearCartItem(); navigate('/', { replace: true }) } catch { setError('Unable to log out right now.'); setIsLoggingOut(false) }
+    try { setIsLoggingOut(true); await api.get('/api/auth/user/logout'); clearCart(); clearActiveOrderId(); navigate('/', { replace: true }) } catch { setError('Unable to log out right now.'); setIsLoggingOut(false) }
   }
 
   const markNotificationRead = async notificationId => {
@@ -148,7 +148,7 @@ const UserProfile = () => {
     <section className="profile-orders">
       <div className="section-heading"><h2>Order history</h2><span>{orders.length} orders</span></div>
       {orders.length === 0 ? <p className="empty-copy">Your completed orders will appear here.</p> : orders.map(order => <article className="order-row" key={order._id}>
-        <div><strong>{order.food?.name || 'Food order'}</strong><p>{order.address}</p>{order.status === 'cancelled' && order.cancellationReason && <p className="error-text">Rejected: {order.cancellationReason}</p>}</div>
+        <div><strong>{(order.items || []).map(item => item.food?.name).filter(Boolean).join(', ') || 'Food order'}</strong><p>{order.address}</p>{order.status === 'cancelled' && order.cancellationReason && <p className="error-text">Rejected: {order.cancellationReason}</p>}</div>
         <div className="order-status"><span>{order.paymentStatus}{order.paymentMethod ? ` · ${order.paymentMethod.toUpperCase()}` : ''}</span><small>{ORDER_STATUS_LABEL[order.status] || order.status}</small></div>
       </article>)}
     </section>

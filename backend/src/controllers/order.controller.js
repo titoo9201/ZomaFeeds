@@ -8,8 +8,34 @@ const pricingService = require('../services/pricing.service');
 const { DEFAULT_DELIVERY_FEE } = require('../config/pricingConfig');
 const { getIO, getRiderSocketId } = require('../socket');
 
-const FOOD_POPULATE = { path: 'food', select: 'name video description price foodPartner', populate: { path: 'foodPartner', select: 'name isOpen openingTime closingTime address phone' } };
+const FOOD_POPULATE = { path: 'items.food', select: 'name video description price foodPartner', populate: { path: 'foodPartner', select: 'name isOpen openingTime closingTime address phone' } };
 const RIDER_POPULATE = { path: 'rider', select: 'name phone vehicleNumber profilePicture currentLocation' };
+
+// Every item in a cart must belong to the same restaurant — enforced client-side (switching
+// restaurants clears the cart), but request bodies aren't trusted, so re-validate here. Returns
+// the resolved food docs (current price/availability) plus the shared foodPartner.
+async function resolveCartItems(itemsInput) {
+    if (!Array.isArray(itemsInput) || itemsInput.length === 0) return { error: 'Your cart is empty' };
+    const foods = await foodModel.find({ _id: { $in: itemsInput.map(item => item.food) } });
+    const foodMap = new Map(foods.map(item => [String(item._id), item]));
+
+    const resolved = [];
+    for (const { food, quantity } of itemsInput) {
+        const foodItem = foodMap.get(String(food));
+        if (!foodItem) return { error: 'One of the items in your cart is no longer available' };
+        const qty = Number(quantity);
+        if (!Number.isInteger(qty) || qty < 1) return { error: 'A valid quantity is required for every item' };
+        resolved.push({ foodItem, quantity: qty });
+    }
+
+    const partnerIds = new Set(resolved.map(item => String(item.foodItem.foodPartner)));
+    if (partnerIds.size > 1) return { error: 'All items in an order must be from the same restaurant' };
+
+    const foodPartner = await foodPartnerModel.findById(resolved[0].foodItem.foodPartner).select('isOpen address location packagingCharge');
+    if (!foodPartner) return { error: 'Restaurant not found' };
+
+    return { resolved, foodPartner };
+}
 
 // Both ends are always already-confirmed coordinates now — the restaurant's stored location
 // (set via PinConfirmMap at registration/profile-update) and the customer's chosen saved
@@ -41,18 +67,17 @@ function deliveryQuoteErrorMessage() {
 
 async function quoteOrder(req, res) {
     try {
-        const { food, quantity, address, lat, lng, paymentMethod } = req.body;
+        const { items, lat, lng, paymentMethod } = req.body;
         if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) return res.status(400).json({ message: 'A delivery location is required — select a saved address with a confirmed pin' });
-        const foodItem = await foodModel.findById(food);
-        if (!foodItem) return res.status(404).json({ message: 'Food not found' });
-        const foodPartner = await foodPartnerModel.findById(foodItem.foodPartner).select('address location packagingCharge');
-        if (!foodPartner) return res.status(404).json({ message: 'Restaurant not found' });
+
+        const { error, resolved, foodPartner } = await resolveCartItems(items);
+        if (error) return res.status(400).json({ message: error });
         if (!foodPartner.location) return res.status(409).json({ message: "This restaurant hasn't set up their location yet" });
 
         const { distanceKm, deliveryFee } = await calculateDeliveryQuote({ foodPartner, dropLat: lat, dropLng: lng });
         if (deliveryFee == null) return res.status(409).json({ message: deliveryQuoteErrorMessage() });
 
-        const itemsTotal = Math.max(1, Number(quantity) || 1) * foodItem.price;
+        const itemsTotal = resolved.reduce((sum, item) => sum + item.quantity * item.foodItem.price, 0);
         let bill = pricingService.computeBill(itemsTotal, deliveryFee, foodPartner.packagingCharge || 0);
         // COD is settled in cash — preview the whole-rupee amount the customer will actually
         // pay, not a decimal figure nobody can hand over exactly.
@@ -66,24 +91,26 @@ async function quoteOrder(req, res) {
 
 async function createOrder(req, res) {
     try {
-        const { food, quantity, address, lat, lng } = req.body;
-        const foodItem = await foodModel.findById(food);
-        if (!foodItem) return res.status(404).json({ message: 'Food not found' });
-        if (!foodItem.isAvailable) return res.status(409).json({ message: 'This item is currently unavailable' });
-        const foodPartner = await foodPartnerModel.findById(foodItem.foodPartner).select('isOpen address location packagingCharge');
-        if (!foodPartner?.isOpen) return res.status(409).json({ message: 'This restaurant is currently closed', foodPartnerId: foodItem.foodPartner });
-        if (!Number.isInteger(Number(quantity)) || Number(quantity) < 1) return res.status(400).json({ message: 'A valid quantity is required' });
+        const { items, address, lat, lng } = req.body;
         if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) return res.status(400).json({ message: 'A delivery location is required — select a saved address with a confirmed pin' });
+
+        const { error, resolved, foodPartner } = await resolveCartItems(items);
+        if (error) return res.status(400).json({ message: error });
+        if (!foodPartner.isOpen) return res.status(409).json({ message: 'This restaurant is currently closed', foodPartnerId: String(foodPartner._id) });
+        const unavailableItem = resolved.find(item => !item.foodItem.isAvailable);
+        if (unavailableItem) return res.status(409).json({ message: `${unavailableItem.foodItem.name} is currently unavailable` });
         if (!foodPartner.location) return res.status(409).json({ message: "This restaurant hasn't set up their location yet" });
 
         const { dropLocation, pickupLocation, distanceKm, deliveryFee } = await calculateDeliveryQuote({ foodPartner, dropLat: lat, dropLng: lng });
         if (deliveryFee == null) return res.status(409).json({ message: deliveryQuoteErrorMessage() });
 
-        const itemsTotal = Number(quantity) * foodItem.price;
+        const itemsTotal = resolved.reduce((sum, item) => sum + item.quantity * item.foodItem.price, 0);
         const bill = pricingService.computeBill(itemsTotal, deliveryFee, foodPartner.packagingCharge || 0);
 
         const order = await orderModel.create({
-            user: req.user._id, food, quantity: Number(quantity), address: address?.trim() || `Pinned location (${dropLocation.lat.toFixed(5)}, ${dropLocation.lng.toFixed(5)})`,
+            user: req.user._id,
+            items: resolved.map(item => ({ food: item.foodItem._id, quantity: item.quantity })),
+            address: address?.trim() || `Pinned location (${dropLocation.lat.toFixed(5)}, ${dropLocation.lng.toFixed(5)})`,
             total: bill.grandTotal, deliveryFee, distanceKm, dropLocation, pickupLocation,
             billBreakdown: {
                 itemsTotal: bill.itemsTotal, restaurantGST: bill.restaurantGST, packagingCharge: bill.packagingCharge,
@@ -148,8 +175,8 @@ async function getPartnerOrders(req, res) {
     const startOfLast30Days = new Date(startOfToday); startOfLast30Days.setDate(startOfLast30Days.getDate() - 30);
     const fetchFrom = new Date(startOfToday); fetchFrom.setDate(fetchFrom.getDate() - Math.max(rangeDays, 30));
 
-    const orders = await orderModel.find({ food: { $in: foodIds }, paymentMethod: { $exists: true }, createdAt: { $gte: fetchFrom } })
-        .populate('food', 'name video')
+    const orders = await orderModel.find({ 'items.food': { $in: foodIds }, paymentMethod: { $exists: true }, createdAt: { $gte: fetchFrom } })
+        .populate('items.food', 'name video')
         .populate('user', 'fullName')
         .populate('rider', 'name phone vehicleNumber')
         .sort({ createdAt: -1 });
@@ -180,7 +207,7 @@ async function respondToOrder(req, res) {
     const { decision, reason } = req.body;
     if (!['accept', 'reject'].includes(decision)) return res.status(400).json({ message: 'Decision must be accept or reject' });
     const foodIds = (await foodModel.find({ foodPartner: req.foodPartner._id }).select('_id')).map(item => item._id);
-    const order = await orderModel.findOne({ _id: req.params.id, food: { $in: foodIds } });
+    const order = await orderModel.findOne({ _id: req.params.id, 'items.food': { $in: foodIds } });
     if (!order) return res.status(404).json({ message: 'Order not found' });
     if (order.status !== 'pending') return res.status(400).json({ message: 'This order has already been responded to' });
 
@@ -208,7 +235,7 @@ const NEXT_STATUS = { preparing: 'out_for_delivery', out_for_delivery: 'delivere
 
 async function advanceOrderStatus(req, res) {
     const foodIds = (await foodModel.find({ foodPartner: req.foodPartner._id }).select('_id')).map(item => item._id);
-    const order = await orderModel.findOne({ _id: req.params.id, food: { $in: foodIds } });
+    const order = await orderModel.findOne({ _id: req.params.id, 'items.food': { $in: foodIds } });
     if (!order) return res.status(404).json({ message: 'Order not found' });
     if (order.rider) return res.status(400).json({ message: 'This order is being handled by a delivery rider' });
     const next = NEXT_STATUS[order.status];
@@ -306,7 +333,8 @@ async function pickupOrder(req, res) {
         if (!order) return res.status(404).json({ message: 'Order not found or not assigned to you' });
         await order.populate([FOOD_POPULATE, { path: 'user', select: 'email fullName' }]);
 
-        notificationModel.create({ user: order.user._id, message: `Your order for ${order.food?.name || 'your food'} has been picked up and will be on its way soon.` }).catch(error => console.error('[notification] pickup notification failed:', error.message));
+        const itemNames = (order.items || []).map(item => item.food?.name).filter(Boolean).join(', ') || 'your food';
+        notificationModel.create({ user: order.user._id, message: `Your order for ${itemNames} has been picked up and will be on its way soon.` }).catch(error => console.error('[notification] pickup notification failed:', error.message));
 
         const io = getIO();
         if (io) io.to(`order_${order._id}`).emit('order:updated', order);

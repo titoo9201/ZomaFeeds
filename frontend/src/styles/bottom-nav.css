@@ -17,6 +17,7 @@
 .bottom-nav__item { display: flex; flex: 1 1 0; min-width: 0; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: var(--radius-sm); color: var(--color-text-secondary); text-decoration: none; font-size: .72rem; font-weight: 700; }
 .bottom-nav__item:hover { color: var(--color-accent); background: var(--color-surface-alt); }
 .bottom-nav__item.is-active { color: var(--button-text); background: var(--button-bg); }
-.bottom-nav__icon { display: grid; place-items: center; line-height: 0; }
+.bottom-nav__icon { position: relative; display: grid; place-items: center; line-height: 0; }
 .bottom-nav__icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.bottom-nav__badge { position: absolute; top: -6px; right: -10px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: var(--color-danger, #e0364a); color: #fff; font-size: .62rem; font-weight: 800; line-height: 16px; text-align: center; }
 .bottom-nav__label { line-height: 1; white-space: nowrap; }

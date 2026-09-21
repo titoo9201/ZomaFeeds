@@ -14,9 +14,9 @@ const OrderConfirmModal = ({ order, onDone, heading = 'Order confirmed!', messag
   const [error, setError] = useState('')
   const [submitted, setSubmitted] = useState(false)
 
-  const foodName = order.food?.name || 'your food'
-  const restaurantName = order.food?.foodPartner?.name || 'The restaurant'
-  const bodyMessage = message ?? `${restaurantName} has accepted your order and started preparing ${foodName}.${order.paymentMethod === 'cod' ? ` Keep ₹${order.total} ready in cash for the delivery partner.` : ` Payment received via ${order.paymentMethod?.toUpperCase()}.`}`
+  const foodNames = (order.items || []).map(item => item.food?.name).filter(Boolean).join(', ') || 'your food'
+  const restaurantName = order.items?.[0]?.food?.foodPartner?.name || 'The restaurant'
+  const bodyMessage = message ?? `${restaurantName} has accepted your order and started preparing ${foodNames}.${order.paymentMethod === 'cod' ? ` Keep ₹${order.total} ready in cash for the delivery partner.` : ` Payment received via ${order.paymentMethod?.toUpperCase()}.`}`
 
   const submitReview = async event => {
     event.preventDefault()
@@ -25,7 +25,7 @@ const OrderConfirmModal = ({ order, onDone, heading = 'Order confirmed!', messag
       setIsSubmitting(true)
       setError('')
       await Promise.all([
-        api.post('/api/reviews', { food: order.food._id, rating, text }),
+        ...(order.items || []).filter(item => item.food?._id).map(item => api.post('/api/reviews', { food: item.food._id, rating, text })),
         (foodPartnerRating || riderRating)
           ? api.patch(`/api/orders/${order._id}/rate`, {
             ...(foodPartnerRating ? { foodPartnerRating } : {}),
@@ -48,7 +48,7 @@ const OrderConfirmModal = ({ order, onDone, heading = 'Order confirmed!', messag
       <p>{bodyMessage}</p>
 
       {!submitted && <form className="order-modal-review" onSubmit={submitReview}>
-        <h3>Rate {foodName}</h3>
+        <h3>Rate {foodNames}</h3>
         <StarRow value={rating} onChange={setRating} disabled={isSubmitting} />
         <textarea value={text} onChange={event => setText(event.target.value)} placeholder="Tell us what you thought (optional) — the restaurant will see this" />
 

@@ -14,6 +14,7 @@ import Reels from '../pages/general/Reels'
 import Saved from '../pages/general/Saved'
 import UserProfile from '../pages/general/UserProfile'
 import OrderPage from '../pages/general/OrderPage'
+import CartPage from '../pages/general/CartPage'
 import PaymentPage from '../pages/general/PaymentPage'
 import Profile from '../pages/food-partner/Profile'
 import Dashboard from '../pages/food-partner/Dashboard'
@@ -59,6 +60,7 @@ const AppRoutes = () => <Router><Routes>
     <Route path="/saved" element={<UserShell><Saved /></UserShell>} />
     <Route path="/user-profile" element={<UserShell><UserProfile /></UserShell>} />
     <Route path="/order/:foodId" element={<CheckoutShell><OrderPage /></CheckoutShell>} />
+    <Route path="/cart" element={<UserShell><CartPage /></UserShell>} />
     <Route path="/payment/:orderId" element={<CheckoutShell><PaymentPage /></CheckoutShell>} />
     <Route path="/food-partner/:id" element={<UserShell><Profile /></UserShell>} />
     <Route path="/dashboard" element={<PartnerShell><Dashboard /></PartnerShell>} />

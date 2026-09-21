@@ -17,6 +17,7 @@ const buildMapsUrl = location => location?.lat != null ? `https://www.google.com
 
 const RiderOrderScreen = ({ order, riderPos, mode, onConfirm, isConfirming }) => {
   const isPick = mode === 'pick'
+  const restaurant = order.items?.[0]?.food?.foodPartner
   const pickupMapsUrl = buildMapsUrl(order.pickupLocation)
   const dropMapsUrl = buildMapsUrl(order.dropLocation)
 
@@ -42,15 +43,15 @@ const RiderOrderScreen = ({ order, riderPos, mode, onConfirm, isConfirming }) =>
           ? <>
             <span className="flow-order-id">Order ID<strong>{String(order._id).slice(-10).toUpperCase()}</strong></span>
             <div>
-              <h3 className="flow-contact-name">{order.food?.foodPartner?.name || 'Restaurant'}</h3>
-              <p className="flow-contact-address"><strong>Pickup address:</strong> {order.food?.foodPartner?.address}</p>
+              <h3 className="flow-contact-name">{restaurant?.name || 'Restaurant'}</h3>
+              <p className="flow-contact-address"><strong>Pickup address:</strong> {restaurant?.address}</p>
             </div>
             <div className="flow-contact-actions">
-              {order.food?.foodPartner?.phone ? <a href={`tel:${order.food.foodPartner.phone}`}>📞 Call</a> : <span />}
+              {restaurant?.phone ? <a href={`tel:${restaurant.phone}`}>📞 Call</a> : <span />}
               {pickupMapsUrl && <a className="is-primary" href={pickupMapsUrl} target="_blank" rel="noopener noreferrer">🧭 Navigate to Restaurant</a>}
             </div>
             <Collapsible title="Order details" defaultOpen>
-              <span>{order.quantity} × {order.food?.name}</span>
+              {order.items?.map(item => <span key={item.food?._id}>{item.quantity} × {item.food?.name}</span>)}
             </Collapsible>
             <Collapsible title="Customer details">
               <span>{order.user?.fullName || 'Customer'}</span>
@@ -69,8 +70,8 @@ const RiderOrderScreen = ({ order, riderPos, mode, onConfirm, isConfirming }) =>
               {order.user?.phone ? <a href={`tel:${order.user.phone}`}>📞 Call</a> : <span />}
               {dropMapsUrl && <a className="is-primary" href={dropMapsUrl} target="_blank" rel="noopener noreferrer">🧭 Navigate to Customer</a>}
             </div>
-            <Collapsible title={`Order details — ${order.food?.foodPartner?.name || 'Restaurant'}`}>
-              <span>{order.quantity} × {order.food?.name}</span>
+            <Collapsible title={`Order details — ${restaurant?.name || 'Restaurant'}`}>
+              {order.items?.map(item => <span key={item.food?._id}>{item.quantity} × {item.food?.name}</span>)}
               <span>Grand total: ₹{order.total}</span>
             </Collapsible>
           </>}

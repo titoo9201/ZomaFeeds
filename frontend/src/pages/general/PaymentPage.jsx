@@ -8,7 +8,7 @@ import PageNav from '../../components/PageNav'
 import OrderConfirmModal from '../../components/OrderConfirmModal'
 import RiderTrackingMap from '../../components/RiderTrackingMap'
 import OrderRouteMap from '../../components/OrderRouteMap'
-import { setCartItem, clearCartItem } from '../../config/cart'
+import { setActiveOrderId, clearActiveOrderId } from '../../config/cart'
 
 const PaymentPage = () => {
   const { orderId } = useParams()
@@ -55,9 +55,12 @@ const PaymentPage = () => {
 
   useEffect(() => {
     if (!order) return
-    if (isDelivered || isRejected) clearCartItem()
-    else setCartItem({ foodId: order.food?._id, orderId: order._id, name: order.food?.name })
+    if (isDelivered || isRejected) clearActiveOrderId()
+    else setActiveOrderId(order._id)
   }, [order, isDelivered, isRejected])
+
+  const restaurant = order?.items?.[0]?.food?.foodPartner
+  const itemsSummary = order?.items?.map(item => item.food?.name).filter(Boolean).join(', ')
 
   const statusLabel = isDelivered ? 'Delivered'
     : isRejected ? 'Order rejected'
@@ -70,7 +73,7 @@ const PaymentPage = () => {
   const statusNote = isDelivered ? 'Enjoy your meal — thanks for ordering with ZomaFeeds.'
     : isRejected ? null
       : isAwaitingRestaurant ? (order?.paymentMethod === 'cod' ? `You'll pay ₹${order?.total} in cash once this is accepted.` : 'Your payment is complete — this screen updates automatically.')
-        : `${order?.food?.foodPartner?.name || 'The restaurant'} · ${order?.food?.name || 'your order'}`
+        : `${restaurant?.name || 'The restaurant'} · ${itemsSummary || 'your order'}`
 
   return <div className="checkout-page">
     <PageNav homePath="/home" />
@@ -101,14 +104,14 @@ const PaymentPage = () => {
         <h2 className="checkout-card-title">Restaurant</h2>
         <div className="tracking-contact">
           <span className="tracking-contact-icon" aria-hidden="true">🍽️</span>
-          <div className="tracking-contact-info"><strong>{order.food?.foodPartner?.name || 'Restaurant'}</strong><span>{order.food?.foodPartner?.address}</span></div>
-          {order.food?.foodPartner?.phone && <a className="tracking-call-btn" href={`tel:${order.food.foodPartner.phone}`} aria-label="Call restaurant">📞</a>}
+          <div className="tracking-contact-info"><strong>{restaurant?.name || 'Restaurant'}</strong><span>{restaurant?.address}</span></div>
+          {restaurant?.phone && <a className="tracking-call-btn" href={`tel:${restaurant.phone}`} aria-label="Call restaurant">📞</a>}
         </div>
       </section>}
 
       {order && <section className="checkout-card">
         <h2 className="checkout-card-title">Order details</h2>
-        <div className="tracking-order-row"><span>{order.food?.name}</span><span>{order.quantity} item(s)</span></div>
+        {order.items?.map(item => <div className="tracking-order-row" key={item.food?._id}><span>{item.food?.name}</span><span>{item.quantity} item(s)</span></div>)}
         <div className="tracking-order-row"><span>Delivery address</span><span>{order.address}</span></div>
         <div className="tracking-order-row"><span>Payment</span><span>{order.paymentMethod?.toUpperCase()} · {order.paymentStatus}</span></div>
         <div className="tracking-order-row"><span>Grand total</span><span>₹{order.total}</span></div>
@@ -119,7 +122,7 @@ const PaymentPage = () => {
       <div className="order-modal">
         <div className="order-modal-icon order-modal-icon--danger" aria-hidden="true">✕</div>
         <h2>Order rejected</h2>
-        <p>{order.food?.foodPartner?.name || 'The restaurant'} couldn't take this order: “{order.cancellationReason}”</p>
+        <p>{restaurant?.name || 'The restaurant'} couldn't take this order: “{order.cancellationReason}”</p>
         {order.paymentStatus === 'refunded' && <p>Your ₹{order.total} has been refunded.</p>}
         <div className="order-modal-actions"><button type="button" className="order-modal-primary" onClick={() => navigate('/reels')}>Back to Reels</button></div>
       </div>
