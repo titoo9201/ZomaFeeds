@@ -2,16 +2,23 @@ const CART_KEY = 'zomafeeds-cart'
 const ACTIVE_ORDER_KEY = 'zomafeeds-active-order'
 export const CART_EVENT = 'zomafeeds-cart-updated'
 
-const EMPTY_CART = { foodPartnerId: null, foodPartnerName: '', items: [] }
+const emptyCart = () => ({ foodPartnerId: null, foodPartnerName: '', items: [] })
 
 const notify = () => window.dispatchEvent(new Event(CART_EVENT))
 
+// Older app versions stored a single {foodId, name} object under this same key — an install
+// that hasn't opened the app since that format was replaced still has one of those sitting in
+// localStorage. Anything without a proper items array is treated as empty instead of trusted,
+// so a stale/foreign shape here can't crash every page that reads the cart on mount.
 export const getCart = () => {
   try {
     const raw = window.localStorage.getItem(CART_KEY)
-    return raw ? JSON.parse(raw) : EMPTY_CART
+    if (!raw) return emptyCart()
+    const parsed = JSON.parse(raw)
+    if (!parsed || !Array.isArray(parsed.items)) return emptyCart()
+    return parsed
   } catch {
-    return EMPTY_CART
+    return emptyCart()
   }
 }
 
