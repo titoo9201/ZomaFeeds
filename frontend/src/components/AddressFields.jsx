@@ -87,6 +87,7 @@ const AddressFields = ({ value, onChange, idPrefix = 'addr' }) => {
         placeholder="e.g. Flat 201, ABC Apartments, Near Shivalik Hospital"
       />
       <p className="small-note">Auto-filled when possible, but maps data for smaller streets is often just the city/pincode — add your house/shop no. and locality name yourself so the rider can actually recognise it. Shown to the rider/restaurant only; not used to find your location, which always comes from the pin above.</p>
+      <p className="small-note">Note: GPS/map location detection is sometimes not accurate. Please also type your area's pincode, and your house no./building no./office no., etc., along with the locality name, so the address is clear.</p>
     </div>
 
     {hasPin
