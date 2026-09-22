@@ -2,15 +2,22 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Heart, Bookmark, MessageCircle, Volume2, VolumeX, MoreVertical, Trash2 } from 'lucide-react'
 import api from '../config/api'
+import { STANDARD_DELIVERY_RANGE_KM } from '../config/pricing'
 
 const getStoredMuted = () => {
   try { return window.localStorage.getItem('zomafeeds-muted') !== 'false' } catch { return true }
 }
 
-const ReelFeed = ({ items = [], onLike, onSave, onCommentAdded, emptyMessage = 'No videos yet.' }) => {
+const PULL_THRESHOLD = 70
+const PULL_MAX = 100
+
+const ReelFeed = ({ items = [], onLike, onSave, onCommentAdded, onRefresh, emptyMessage = 'No videos yet.' }) => {
   const videoRefs = useRef(new Map())
   const audioRef = useRef(null)
   const feedRef = useRef(null)
+  const pullStartYRef = useRef(null)
+  const [pullDistance, setPullDistance] = useState(0)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [activeItemId, setActiveItemId] = useState(null)
   const [isMuted, setIsMuted] = useState(getStoredMuted)
   const [activeComments, setActiveComments] = useState(null)
@@ -78,6 +85,32 @@ const ReelFeed = ({ items = [], onLike, onSave, onCommentAdded, emptyMessage = '
   }, [activeSongUrl, activeSongStart, activeSongDuration, isMuted])
 
   useEffect(() => () => audioRef.current?.pause(), [])
+
+  // A fresh mount (login, first visit to Reels) always starts at the first reel — the browser
+  // can otherwise restore a stale scroll position on some navigations.
+  useEffect(() => { feedRef.current?.scrollTo({ top: 0 }) }, [])
+
+  // Pull-to-refresh: only engages when already scrolled to the very top and the user drags
+  // further down from there (mirrors native app feed-refresh gestures). Uses raw Pointer
+  // Events, same pattern as SwipeToConfirm, so it works for touch, mouse and pen alike.
+  const onPullStart = event => {
+    if (feedRef.current && feedRef.current.scrollTop <= 0) pullStartYRef.current = event.clientY
+  }
+  const onPullMove = event => {
+    if (pullStartYRef.current == null || isRefreshing) return
+    if (!feedRef.current || feedRef.current.scrollTop > 0) { pullStartYRef.current = null; setPullDistance(0); return }
+    const delta = event.clientY - pullStartYRef.current
+    setPullDistance(delta > 0 ? Math.min(PULL_MAX, delta) : 0)
+  }
+  const onPullEnd = async () => {
+    if (pullStartYRef.current == null) return
+    pullStartYRef.current = null
+    if (pullDistance >= PULL_THRESHOLD && onRefresh) {
+      setIsRefreshing(true)
+      try { await onRefresh() } finally { setIsRefreshing(false) }
+    }
+    setPullDistance(0)
+  }
 
   const scrollByReel = useCallback(direction => {
     const feed = feedRef.current
@@ -181,7 +214,18 @@ const ReelFeed = ({ items = [], onLike, onSave, onCommentAdded, emptyMessage = '
     <div className="reel-action-group"><button disabled={isCommentsLoading} onClick={() => openComments(item)} className="reel-action" aria-label="Comments">{isCommentsLoading ? '...' : <MessageCircle size={22} />}</button><div className="reel-action__count">{item.commentsCount ?? 0}</div></div>
   </>
 
-  return <div className={`reels-page${activeComments ? ' reels-page--comments-open' : ''}`}><audio ref={audioRef} /><div className="reels-feed" ref={feedRef} role="list">
+  return <div className={`reels-page${activeComments ? ' reels-page--comments-open' : ''}`}><audio ref={audioRef} /><div
+    className="reels-feed"
+    ref={feedRef}
+    role="list"
+    onPointerDown={onPullStart}
+    onPointerMove={onPullMove}
+    onPointerUp={onPullEnd}
+    onPointerCancel={onPullEnd}
+  >
+    <div className="reel-pull-indicator" style={{ opacity: pullDistance / PULL_THRESHOLD, transform: `translate(-50%, ${Math.min(pullDistance, PULL_THRESHOLD) - 40}px)` }} aria-hidden="true">
+      <span className={`reel-pull-spinner${isRefreshing ? ' is-spinning' : ''}`} />
+    </div>
     {items.length === 0 && <div className="empty-state"><p>{emptyMessage}</p></div>}
     {items.map(item => { const isCommentsActive = activeComments?._id === item._id; return <section key={item._id} className={`reel${isCommentsActive ? ' reel--comments-active' : ''}`} role="listitem">
       <div className={`reel-media${isCommentsActive ? ' reel-media--floating' : ''}`}>
@@ -191,7 +235,7 @@ const ReelFeed = ({ items = [], onLike, onSave, onCommentAdded, emptyMessage = '
       </div>
       <div className="reel-overlay"><div className="reel-overlay-gradient" aria-hidden="true" />
         <div className="reel-actions reel-actions--inline">{renderActionButtons(item)}</div>
-        <div className="reel-content">{item.song?.title && <div className="reel-song" aria-label={`Song: ${item.song.title} by ${item.song.artist}`}><span aria-hidden="true">♪</span> {item.song.title} {item.song.artist ? `— ${item.song.artist}` : ''}</div>}<strong className="reel-title">{item.name}</strong><div className="reel-rating" aria-label={`${item.averageRating || 0} out of 5 stars from ${item.reviewCount || 0} reviews`}>★ {item.averageRating ? item.averageRating.toFixed(1) : '0.0'} <span>({item.reviewCount || 0})</span></div><p className="reel-description">{item.description}</p><div className="reel-links">{item.foodPartner?._id && <Link className="reel-btn" to={`/food-partner/${item.foodPartner._id}`}>Visit store</Link>}<Link className="reel-btn reel-btn-light" to={`/order/${item._id}`}>Order now</Link></div></div>
+        <div className="reel-content">{item.song?.title && <div className="reel-song" aria-label={`Song: ${item.song.title} by ${item.song.artist}`}><span aria-hidden="true">♪</span> {item.song.title} {item.song.artist ? `— ${item.song.artist}` : ''}</div>}<strong className="reel-title">{item.name}</strong><div className="reel-rating" aria-label={`${item.averageRating || 0} out of 5 stars from ${item.reviewCount || 0} reviews`}>★ {item.averageRating ? item.averageRating.toFixed(1) : '0.0'} <span>({item.reviewCount || 0})</span></div><p className="reel-description">{item.description}</p>{item.foodPartner?.distanceKm > STANDARD_DELIVERY_RANGE_KM && <p className="reel-distance-note">📍 This restaurant is {item.foodPartner.distanceKm}km away — delivery normally works up to {STANDARD_DELIVERY_RANGE_KM}km, but you can still order from here at a higher delivery fee.</p>}<div className="reel-links">{item.foodPartner?._id && <Link className="reel-btn" to={`/food-partner/${item.foodPartner._id}`}>Visit store</Link>}<Link className="reel-btn reel-btn-light" to={`/order/${item._id}`}>Order now</Link></div></div>
       </div>
     </section> })}
   </div>

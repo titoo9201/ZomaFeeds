@@ -1,0 +1,39 @@
+@import './theme.css';
+
+.cookie-consent {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 14px 20px max(14px, env(safe-area-inset-bottom));
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  box-shadow: 0 -8px 24px rgba(0,0,0,.12);
+}
+
+.cookie-consent-text {
+  margin: 0;
+  flex: 1 1 260px;
+  min-width: 0;
+  color: var(--color-text);
+  font-size: .88rem;
+  line-height: 1.4;
+}
+
+.cookie-consent-accept {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 22px;
+  background: var(--button-bg);
+  color: var(--button-text);
+  font-weight: 800;
+  font-size: .88rem;
+  cursor: pointer;
+}

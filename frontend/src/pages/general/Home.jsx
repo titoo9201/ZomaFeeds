@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import api from '../../config/api'
 import LoadingState from '../../components/LoadingState'
 import LocationPrompt from '../../components/LocationPrompt'
+import NoNearbyRestaurants from '../../components/NoNearbyRestaurants'
+import { STANDARD_DELIVERY_RANGE_KM } from '../../config/pricing'
 import '../../styles/directory.css'
 
 const TOP_FOODS_LIMIT = 12
@@ -63,6 +65,8 @@ const Home = () => {
 
   const filteredPartners = useMemo(() => isSearching ? partners.filter(partner => `${partner.name} ${partner.address}`.toLowerCase().includes(debouncedSearch)) : [], [partners, isSearching, debouncedSearch])
 
+  const hasNoNearbyRestaurants = hasUserLocation && foods.length === 0
+
   return <main className="directory-page">
     <header className="directory-header">
       <p className="eyebrow">Discover nearby</p>
@@ -72,7 +76,7 @@ const Home = () => {
       {hasUserLocation && !showLocationPrompt && <button type="button" className="location-change-btn" onClick={() => setShowLocationPrompt(true)}>📍 Change location</button>}
     </header>
     {showLocationPrompt && <LocationPrompt onLocationSet={handleLocationSet} onSkip={() => setShowLocationPrompt(false)} />}
-    {isLoading ? <LoadingState label="Loading food discovery..." /> : error ? <p className="error-text" role="alert">{error}</p> : <>
+    {isLoading ? <LoadingState label="Loading food discovery..." /> : error ? <p className="error-text" role="alert">{error}</p> : hasNoNearbyRestaurants ? <NoNearbyRestaurants /> : <>
       <div className="directory-cta"><div><span className="eyebrow">{isSearching ? 'Search results' : 'Fresh from the kitchen'}</span><h2>{isSearching ? `Results for “${searchTerm}”` : hasUserLocation ? 'Top rated near you.' : 'Top picks near you.'}</h2></div><Link className="reel-btn" to="/reels">Watch full reels</Link></div>
       {visibleFoods.length > 0 ? <section className="food-reel-grid" aria-label="Food reels">{visibleFoods.map(food => <FoodReelCard key={food._id} food={food} />)}</section> : <p className="empty-copy">{isSearching ? `No food reel matched “${searchTerm}”.` : 'No food reels yet.'}</p>}
       {isSearching && filteredPartners.length > 0 && <section className="restaurant-section"><div className="section-heading"><h2>Restaurants</h2><span>{filteredPartners.length} places</span></div><div className="partner-grid">{filteredPartners.map(partner => <PartnerCard key={partner._id} partner={partner} />)}</div></section>}
@@ -82,9 +86,11 @@ const Home = () => {
 
 const FoodReelCard = ({ food }) => {
   const partner = typeof food.foodPartner === 'object' ? food.foodPartner : null
+  const isPremiumDistance = partner?.distanceKm > STANDARD_DELIVERY_RANGE_KM
   return <Link className="food-reel-card" to={partner?._id ? `/food-partner/${partner._id}?food=${food._id}` : `/order/${food._id}`}>
     {food.mediaType === 'image' ? <img src={food.video} alt={food.name} /> : <video src={food.video} muted playsInline preload="metadata" />}
     <span className="food-reel-shade" />
+    {isPremiumDistance && <span className="food-reel-distance-badge">{partner.distanceKm}km · higher delivery fee</span>}
     <span className="food-reel-content"><strong>{food.name}</strong><small>{partner?.name || 'Food partner'}</small></span>
   </Link>
 }

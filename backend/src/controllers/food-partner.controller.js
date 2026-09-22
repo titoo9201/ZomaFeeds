@@ -15,7 +15,7 @@ async function getPartnerStats(foodPartnerId) {
     const foodItems = await foodModel.find({ foodPartner: foodPartnerId }).select('_id');
     const foodIds = foodItems.map(item => item._id);
     const [customersServed, reviewStats] = await Promise.all([
-        orderModel.countDocuments({ food: { $in: foodIds }, paymentStatus: 'paid' }),
+        orderModel.countDocuments({ 'items.food': { $in: foodIds }, paymentStatus: 'paid' }),
         reviewModel.aggregate([{ $match: { food: { $in: foodIds } } }, { $group: { _id: null, total: { $sum: '$rating' }, count: { $sum: 1 } } }])
     ]);
     const rating = reviewStats[0];
@@ -84,7 +84,7 @@ async function listFoodPartners(req, res) {
     });
 
     const [orderCounts, reviewStats] = await Promise.all([
-        orderModel.aggregate([{ $match: { paymentStatus: 'paid' } }, { $group: { _id: '$food', count: { $sum: 1 } } }]),
+        orderModel.aggregate([{ $match: { paymentStatus: 'paid' } }, { $unwind: '$items' }, { $group: { _id: '$items.food', count: { $sum: 1 } } }]),
         reviewModel.aggregate([{ $group: { _id: '$food', total: { $sum: '$rating' }, count: { $sum: 1 } } }])
     ]);
     const orderCountMap = new Map(orderCounts.map(item => [String(item._id), item.count]));

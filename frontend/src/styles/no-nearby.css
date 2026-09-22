@@ -1,0 +1,19 @@
+@import './theme.css';
+
+.no-nearby-state {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  max-width: 420px;
+  margin: 48px auto;
+  padding: 40px 28px;
+  text-align: center;
+  color: var(--color-text);
+}
+.no-nearby-icon { font-size: 2.2rem; }
+.no-nearby-state h2 { margin: 0; font-size: 1.2rem; }
+.no-nearby-state p { margin: 0; color: var(--color-text-secondary); font-size: .9rem; line-height: 1.5; }
+
+/* On the (dark, full-bleed) Reels page the state needs light text and its own centering. */
+.reels-page .no-nearby-state { min-height: 100%; margin: 0 auto; display: grid; align-content: center; color: #fff; }
+.reels-page .no-nearby-state p { color: rgba(255,255,255,.72); }

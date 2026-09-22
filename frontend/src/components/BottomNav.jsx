@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import '../styles/bottom-nav.css'
 import { getCartItemCount, getActiveOrderId, CART_EVENT } from '../config/cart'
+import { REELS_REFRESH_EVENT } from '../config/reelsRefresh'
 
 const HomeIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5" /><path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10" /></svg>
 const ReelIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="m9 3 2 4m4-4 2 4M9 11l6 3-6 3z" /></svg>
@@ -20,6 +21,7 @@ const baseItems = [
 const BottomNav = () => {
   const [cartCount, setCartCount] = useState(getCartItemCount)
   const [activeOrderId, setActiveOrderId] = useState(getActiveOrderId)
+  const location = useLocation()
 
   useEffect(() => {
     const sync = () => { setCartCount(getCartItemCount()); setActiveOrderId(getActiveOrderId()) }
@@ -40,7 +42,12 @@ const BottomNav = () => {
     <div className="bottom-nav__inner">
       {items.map(item => {
         const IconComponent = item.Icon
-        return <NavLink key={item.label} to={item.to} end={item.end} className={({ isActive }) => `bottom-nav__item ${isActive ? 'is-active' : ''}`}>
+        // Tapping Reels while already on it doesn't navigate anywhere — refresh the feed and
+        // jump back to the top instead, matching Instagram's "tap the active tab" behavior.
+        const onClick = item.to === '/reels' && location.pathname === '/reels'
+          ? () => window.dispatchEvent(new Event(REELS_REFRESH_EVENT))
+          : undefined
+        return <NavLink key={item.label} to={item.to} end={item.end} onClick={onClick} className={({ isActive }) => `bottom-nav__item ${isActive ? 'is-active' : ''}`}>
           <span className="bottom-nav__icon">
             <IconComponent />
             {item.badge > 0 && <span className="bottom-nav__badge">{item.badge}</span>}

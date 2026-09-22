@@ -1,23 +1,13 @@
 const riderModel = require('../models/rider.model');
 const orderModel = require('../models/order.model');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const otpService = require('../services/otp.service');
 const storageService = require('../services/storage.service');
 const { v4: uuid } = require('uuid');
 const { getIO, setRiderOnline } = require('../socket');
+const { setAuthCookie, clearAuthCookie } = require('../utils/authCookie');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
-
-function setAuthCookie(res, id, role) {
-    const token = jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.cookie('token', token, {
-        httpOnly: true,
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 7 * 24 * 60 * 60 * 1000
-    });
-}
 
 async function registerRider(req, res) {
     try {
@@ -81,7 +71,7 @@ async function loginRider(req, res) {
 }
 
 function logoutRider(req, res) {
-    res.clearCookie("token");
+    clearAuthCookie(res);
     res.status(200).json({ message: "Rider logged out successfully" });
 }
 
