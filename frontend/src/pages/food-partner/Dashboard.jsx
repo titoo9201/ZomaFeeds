@@ -233,7 +233,11 @@ const ORDER_PILL_LABEL = { preparing: 'Preparing', out_for_delivery: 'Out for de
 const IncomingOrderCard = ({ order, respondingId, rejectDraftId, rejectReason, onSetRejectReason, onStartReject, onCancelReject, onRespond, onAdvance }) => {
   const isBusy = respondingId === order._id
   return <article className="incoming-order">
-    <div className="incoming-order-main"><strong>{(order.items || []).map(item => item.food?.name).filter(Boolean).join(', ')}</strong><span>{(order.items || []).reduce((sum, item) => sum + item.quantity, 0)} item(s) · {order.user?.fullName || 'Customer'}</span><small>{order.address}</small></div>
+    <div className="incoming-order-main">
+      <strong>{(order.items || []).map(item => item.food?.name).filter(Boolean).join(', ')}</strong>
+      <span>{(order.items || []).reduce((sum, item) => sum + item.quantity, 0)} item(s) · {order.user?.fullName || 'Customer'}{order.user?.phone && <a className="incoming-order-call" href={`tel:${order.user.phone}`} aria-label="Call customer">📞</a>}</span>
+      <small>{order.address}</small>
+    </div>
     {order.status === 'pending' ? (
       rejectDraftId === order._id ? <div className="incoming-order-reject">
         <input value={rejectReason} onChange={event => onSetRejectReason(event.target.value)} placeholder="Reason for rejecting" />
@@ -249,7 +253,10 @@ const IncomingOrderCard = ({ order, respondingId, rejectDraftId, rejectReason, o
     ) : order.status === 'preparing' || order.status === 'out_for_delivery' ? <div className="incoming-order-actions">
       <span className={`order-pill order-pill--${order.status}`}>{ORDER_PILL_LABEL[order.status]}</span>
       {order.rider
-        ? <span className="order-pill order-pill--out_for_delivery">{order.riderStatus === 'assigned' ? `Rider ${order.rider.name} is heading here for pickup` : `Out for delivery with ${order.rider.name}`}</span>
+        ? <span className="order-pill order-pill--out_for_delivery">
+          {order.riderStatus === 'assigned' ? `Rider ${order.rider.name} is heading here for pickup` : `Out for delivery with ${order.rider.name}`}
+          {order.rider.phone && <a className="incoming-order-call" href={`tel:${order.rider.phone}`} aria-label="Call rider">📞</a>}
+        </span>
         : <button type="button" className="is-accept" onClick={() => onAdvance(order._id)} disabled={Boolean(respondingId)}>{isBusy ? 'Updating...' : order.status === 'preparing' ? 'Mark out for delivery' : 'Mark delivered'}</button>}
     </div>
       : <span className={`order-pill order-pill--${order.status}`}>{ORDER_PILL_LABEL[order.status] || order.status}</span>}

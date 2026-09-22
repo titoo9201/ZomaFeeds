@@ -177,7 +177,7 @@ async function getPartnerOrders(req, res) {
 
     const orders = await orderModel.find({ 'items.food': { $in: foodIds }, paymentMethod: { $exists: true }, createdAt: { $gte: fetchFrom } })
         .populate('items.food', 'name video')
-        .populate('user', 'fullName')
+        .populate('user', 'fullName phone')
         .populate('rider', 'name phone vehicleNumber')
         .sort({ createdAt: -1 });
 
@@ -261,7 +261,7 @@ async function startDelivery(req, res) {
             { new: true }
         );
         if (!order) return res.status(404).json({ message: 'Order not found or not picked up yet' });
-        await order.populate([FOOD_POPULATE, { path: 'user', select: 'email fullName' }, RIDER_POPULATE]);
+        await order.populate([FOOD_POPULATE, { path: 'user', select: 'email fullName phone' }, RIDER_POPULATE]);
 
         mailService.sendOrderOutForDeliveryEmail(order.user.email, order).catch(error => console.error('[mail] out-for-delivery email failed:', error.message));
 
@@ -331,7 +331,7 @@ async function pickupOrder(req, res) {
             { new: true }
         );
         if (!order) return res.status(404).json({ message: 'Order not found or not assigned to you' });
-        await order.populate([FOOD_POPULATE, { path: 'user', select: 'email fullName' }, RIDER_POPULATE]);
+        await order.populate([FOOD_POPULATE, { path: 'user', select: 'email fullName phone' }, RIDER_POPULATE]);
 
         const itemNames = (order.items || []).map(item => item.food?.name).filter(Boolean).join(', ') || 'your food';
         notificationModel.create({ user: order.user._id, message: `Your order for ${itemNames} has been picked up and will be on its way soon.` }).catch(error => console.error('[notification] pickup notification failed:', error.message));
@@ -362,7 +362,7 @@ async function deliverOrder(req, res) {
         if (order.paymentMethod === 'cod') order.paymentStatus = 'paid';
         await order.save();
 
-        const deliveredOrder = await orderModel.findById(order._id).populate([FOOD_POPULATE, { path: 'user', select: 'email fullName' }, RIDER_POPULATE]);
+        const deliveredOrder = await orderModel.findById(order._id).populate([FOOD_POPULATE, { path: 'user', select: 'email fullName phone' }, RIDER_POPULATE]);
 
         mailService.sendOrderDeliveredEmail(deliveredOrder.user.email, deliveredOrder).catch(error => console.error('[mail] delivered email failed:', error.message));
 

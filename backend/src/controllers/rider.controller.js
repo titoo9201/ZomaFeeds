@@ -38,8 +38,8 @@ async function registerRider(req, res) {
             hashedPassword = await bcrypt.hash(password, 10);
         }
 
-        const profilePicture = req.file ? (await storageService.uploadFile(req.file.buffer, `profile-${uuid()}`)).url : undefined;
-        const rider = await riderModel.create({ name, email, password: hashedPassword, phone: phone.trim(), vehicleNumber: vehicleNumber.trim(), profilePicture });
+        const uploaded = req.file ? await storageService.uploadFile(req.file.buffer, `profile-${uuid()}`) : null;
+        const rider = await riderModel.create({ name, email, password: hashedPassword, phone: phone.trim(), vehicleNumber: vehicleNumber.trim(), profilePicture: uploaded?.url, profilePictureFileId: uploaded?.fileId });
 
         setAuthCookie(res, rider._id, 'rider');
 
@@ -147,9 +147,17 @@ async function updateProfile(req, res) {
         if (name?.trim()) rider.name = name.trim();
         if (phone?.trim()) rider.phone = phone.trim();
         if (vehicleNumber?.trim()) rider.vehicleNumber = vehicleNumber.trim();
-        if (req.file) rider.profilePicture = (await storageService.uploadFile(req.file.buffer, `profile-${uuid()}`)).url;
+
+        const oldProfilePictureFileId = rider.profilePictureFileId;
+        if (req.file) {
+            const uploaded = await storageService.uploadFile(req.file.buffer, `profile-${uuid()}`);
+            rider.profilePicture = uploaded.url;
+            rider.profilePictureFileId = uploaded.fileId;
+        }
 
         await rider.save({ validateModifiedOnly: true });
+        // Free up the old picture's cloud storage only after the new one is safely saved.
+        if (req.file && oldProfilePictureFileId) await storageService.deleteFile(oldProfilePictureFileId);
         const stats = await getRiderStats(rider._id);
         res.json({ rider: { ...rider.toObject(), password: undefined, ...stats } });
     } catch (error) {

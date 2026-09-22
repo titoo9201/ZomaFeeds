@@ -177,9 +177,16 @@ async function updateProfile(req, res) {
             if (!Number.isFinite(charge) || charge < 0) return res.status(400).json({ message: 'Packaging charge must be a non-negative number' });
             partner.packagingCharge = charge;
         }
-        if (req.file) partner.profilePicture = (await storageService.uploadFile(req.file.buffer, `profile-${uuid()}`)).url;
+        const oldProfilePictureFileId = partner.profilePictureFileId;
+        if (req.file) {
+            const uploaded = await storageService.uploadFile(req.file.buffer, `profile-${uuid()}`);
+            partner.profilePicture = uploaded.url;
+            partner.profilePictureFileId = uploaded.fileId;
+        }
 
         await partner.save({ validateModifiedOnly: true });
+        // Free up the old picture's cloud storage only after the new one is safely saved.
+        if (req.file && oldProfilePictureFileId) await storageService.deleteFile(oldProfilePictureFileId);
         res.json({ foodPartner: { ...partner.toObject(), password: undefined } });
     } catch (error) {
         console.error('[updateProfile] failed:', error);

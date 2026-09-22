@@ -73,12 +73,13 @@ async function registerUser(req, res) {
             hashedPassword = await bcrypt.hash(password, 10);
         }
 
-        const profilePicture = req.file ? (await storageService.uploadFile(req.file.buffer, `profile-${uuid()}`)).url : undefined;
+        const uploaded = req.file ? await storageService.uploadFile(req.file.buffer, `profile-${uuid()}`) : null;
         const user = await userModel.create({
             fullName,
             email,
             password: hashedPassword,
-            profilePicture
+            profilePicture: uploaded?.url,
+            profilePictureFileId: uploaded?.fileId
         })
 
         setAuthCookie(res, user._id, 'user');
@@ -173,7 +174,7 @@ async function registerFoodPartner(req, res) {
             hashedPassword = await bcrypt.hash(password, 10);
         }
 
-        const profilePicture = req.file ? (await storageService.uploadFile(req.file.buffer, `profile-${uuid()}`)).url : undefined;
+        const uploaded = req.file ? await storageService.uploadFile(req.file.buffer, `profile-${uuid()}`) : null;
         // No free-text address to geocode — location comes from GPS or a pasted Maps link,
         // confirmed on PinConfirmMap. The address text is a single editable field on the
         // frontend (pre-filled from a Maps link's own address when available) — whatever's
@@ -186,7 +187,8 @@ async function registerFoodPartner(req, res) {
             phone,
             address,
             contactName,
-            profilePicture,
+            profilePicture: uploaded?.url,
+            profilePictureFileId: uploaded?.fileId,
             restaurantType,
             location: { type: 'Point', coordinates: [Number(lng), Number(lat)] }
         })
@@ -305,8 +307,16 @@ async function updateUserProfile(req, res) {
     }
     if (fullName?.trim()) user.fullName = fullName.trim();
     if (phone !== undefined) user.phone = phone.trim();
-    if (req.file) user.profilePicture = (await storageService.uploadFile(req.file.buffer, `profile-${uuid()}`)).url;
+
+    const oldProfilePictureFileId = user.profilePictureFileId;
+    if (req.file) {
+        const uploaded = await storageService.uploadFile(req.file.buffer, `profile-${uuid()}`);
+        user.profilePicture = uploaded.url;
+        user.profilePictureFileId = uploaded.fileId;
+    }
 
     await user.save();
+    // Free up the old picture's cloud storage only after the new one is safely saved.
+    if (req.file && oldProfilePictureFileId) await storageService.deleteFile(oldProfilePictureFileId);
     res.json({ user: { _id: user._id, email: user.email, fullName: user.fullName, phone: user.phone, profilePicture: user.profilePicture } });
 }

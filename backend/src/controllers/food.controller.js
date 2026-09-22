@@ -42,6 +42,7 @@ async function createFood(req, res) {
         category: req.body.category,
         price: req.body.price ? Number(req.body.price) : undefined,
         video: fileUploadResult.url,
+        videoFileId: fileUploadResult.fileId,
         mediaType: isImage ? 'image' : 'video',
         foodPartner: req.foodPartner._id,
         song
@@ -254,7 +255,8 @@ async function deleteFood(req, res) {
         await Promise.all([
             foodModel.deleteOne({ _id: food._id }),
             likeModel.deleteMany({ food: food._id }),
-            saveModel.deleteMany({ food: food._id })
+            saveModel.deleteMany({ food: food._id }),
+            storageService.deleteFile(food.videoFileId)
         ]);
         return res.json({ message: "Food deleted successfully" });
 }

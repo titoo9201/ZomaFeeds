@@ -9,6 +9,11 @@ const foodSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    // ImageKit's file id for `video` — kept so the cloud file can be deleted the moment this
+    // food item is removed, instead of leaving orphaned storage behind.
+    videoFileId: {
+        type: String,
+    },
     mediaType: {
         type: String,
         enum: ['video', 'image'],

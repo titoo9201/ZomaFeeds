@@ -17,6 +17,11 @@ const userSchema = new mongoose.Schema({
     profilePicture: {
         type: String
     },
+    // ImageKit's file id for `profilePicture` — kept so the old picture can be deleted from
+    // cloud storage the moment it's replaced by a new one.
+    profilePictureFileId: {
+        type: String
+    },
     phone: {
         type: String,
         trim: true
