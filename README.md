@@ -50,7 +50,7 @@ Scroll bite-sized food reels from restaurants near you, order in a tap, and watc
 
 Three experiences live in one codebase, each behind its own role-based route guard and its own auth cookie:
 
-- **For foodies** — an Instagram-Reels-style vertical feed of real dishes, saved-address book, a Zomato-style single-page checkout with a full GST/fee breakdown, and a live order tracker that shows a real rider gliding toward you.
+- **For foodies** — an Instagram-Reels-style vertical feed of real dishes, saved-address book, a multi-item cart (one restaurant at a time) with a Zomato-style single-page checkout and a full GST/fee breakdown, and a live order tracker that shows a real rider gliding toward you.
 - **For restaurant partners** — a dashboard to run the kitchen: accept/reject orders, toggle open/closed, manage the menu, set a packaging charge, attach a soundtrack to every reel, and see exactly which rider picked up which order.
 - **For delivery riders** — a Rapido/Zomato-style step-by-step delivery flow: a full-screen "New order!" card with a live distance breakdown, Accept/Deny, "Reach pickup" → "Pick order" → "Reach drop" → "Drop order", each with one-tap navigation, calling, and a Today/Yesterday/Past earnings dashboard.
 
@@ -65,11 +65,12 @@ Everything — auth, media storage, email, real-time location, routing, geocodin
 | | |
 |---|---|
 | 🎬 | **Reels-first discovery** — a vertical, swipeable feed of food videos *or photos* (IntersectionObserver-driven autoplay), instead of a boring list of restaurants |
-| 📍 | **Radius-aware Home feed** — restaurants are only shown if you're within a flat 15km of your saved location (`$geoNear`), sorted by rating; set it by picking one of your saved addresses from a dropdown, or by confirming a brand new GPS/Maps-link pin (which can then optionally be added to your address book too, under an existing or new label) — the same address system used at checkout, not a separate one-off flow |
+| 📍 | **30km discovery radius, two delivery tiers** — restaurants are shown within a 30km radius of your saved location (`$geoNear`), sorted by rating: the first 15km delivers at the normal flat fee, and 15–30km is still orderable but at a distance-scaled premium fee (clearly labelled on the reel/card itself). If literally nothing is within 30km, the Home feed and Reels tab both show a "no restaurant available in your area yet" message instead of an empty feed |
 | ❤️💬🔖 | **Like, save & comment** on any reel, with live counts, comment avatars, an Instagram-style comment sheet (video shrinks to a corner while comments take over), and long-press-to-delete your own comment |
 | ⭐ | **Dish + restaurant ratings** — every reel shows its own average rating, and checkout shows both the dish's rating and the restaurant's overall rating |
-| 🏠💌 | **Labelled address book** — save multiple delivery addresses (Home, Girlfriend, Boyfriend, Friend, Relative, Other), each set from your live GPS location *or* a pasted Google Maps link, confirmed on a draggable-pin map (Street/Satellite toggle) before it's saved. Pasting a link to a named place pre-fills a plain, freely-editable address text box (e.g. to add your flat/shop number) — that text is never geocoded, only shown to the restaurant/rider; the actual location always comes from the confirmed pin |
-| 🛒 | **Single-page Zomato-style checkout** — item + quantity stepper, an address-picker sheet and a payment-method sheet both surfaced from a sticky bottom bar, with a live bill preview *before* you place the order |
+| 🏠💌 | **Labelled address book** — save multiple delivery addresses (Home, Girlfriend, Boyfriend, Friend, Relative, Other), each set from your live GPS location *or* a pasted Google Maps link, confirmed on a draggable-pin map (Street/Satellite toggle) before it's saved. Pasting a link to a named place pre-fills a plain, freely-editable address text box — since GPS/map detection is sometimes imprecise, a note nudges you to also add your pincode plus house/building/office no. and locality yourself so the rider can actually find the door; that text is never geocoded, only shown to the restaurant/rider — the actual location always comes from the confirmed pin |
+| 🛒 | **Multi-item cart, one restaurant at a time** — add as many dishes as you like from a single restaurant with a running cart badge in the bottom nav; adding something from a *different* restaurant warns you first ("this will replace your current cart") before switching, so you never end up with a mixed, unorderable order |
+| 🧺 | **Single-page Zomato-style checkout** — the cart screen lists every item with its own quantity stepper, an address-picker sheet and a payment-method sheet both surfaced from a sticky bottom bar, with a live bill preview *before* you place the order |
 | 🧾 | **Full itemised bill** — item total → restaurant GST (5%) → packaging charge (if the restaurant charges one) → distance-based delivery fee → platform fee → GST on fees (18%) → grand total. See [Bill breakdown](#-bill-breakdown) |
 | 💳 | **Dummy payment flow** — pay by UPI, Card, or Cash on Delivery (no real money ever moves); a COD total is rounded to a whole rupee (a "round off" line reconciles it) since paise can't practically change hands — UPI/Card stay precise. The rider confirms delivery *and* settles the cash in one action; there's no separate customer-side confirmation step |
 | 🛵🗺️ | **Live order tracking** — a real Leaflet/OpenStreetMap route from the moment the order is placed (pickup → drop preview), a rider marker that **glides and rotates to face the direction of travel** once a rider is assigned, restaurant/rider contact cards with one-tap `tel:` calling |
@@ -78,7 +79,9 @@ Everything — auth, media storage, email, real-time location, routing, geocodin
 | 🔔 | **"Notify me" for closed restaurants** — get an in-app notification the second they reopen, plus a notification when your rider picks up your food |
 | 🔑 | **Password *or* OTP auth** — register/log in with a password, or a 4-digit code emailed to you; works for all three roles |
 | 🔈 | **Reel sound control** — a reel plays its own audio by default; if the partner attached a song, the video mutes and the song plays instead, all behind one global mute toggle |
+| 🔄 | **Instagram-style Reels refresh** — tapping the Reels tab while already on it re-fetches the feed and jumps back to the first reel; a fresh login/navigation always starts at the top; and pulling down from the very first reel triggers a native-feeling pull-to-refresh with a spinner |
 | 📲 | **Installable PWA** — a real manifest + service worker, so Chrome/Android offer "Install app" instead of just "Create shortcut" |
+| 🍪 | **Cookie consent banner** — a one-time, dismissible notice explaining that a cookie keeps you logged in; accepting it is remembered in `localStorage` so it never shows again |
 | 🌗 | **Light/dark theme**, tuned to the brand palette, remembered across visits |
 
 ### 🍽️ For restaurant partners
@@ -89,9 +92,10 @@ Everything — auth, media storage, email, real-time location, routing, geocodin
 | 🟢 | **Open/Closed switch** — flip your restaurant's status any time, independent of your configured hours |
 | 🕘 | **Order buckets** — Today / Yesterday / Past, each with orders-served and revenue stats (your real 75%+ share of the item price, not the customer's full bill) |
 | ✅❌ | **Accept / Reject workflow** — accepting moves the order into your kitchen queue (delivery pricing is already settled at order time, straight off your and the customer's confirmed map pins — no geocoding involved); rejecting requires a reason and auto-refunds a paid order |
-| 🚚🛵 | **See exactly who's delivering** — once a rider claims the order, the dashboard shows their name and live status ("heading here for pickup" → "out for delivery with …") instead of a dead-end "advance" button |
+| 🚚🛵 | **See exactly who's delivering** — once a rider claims the order, the dashboard shows their name and live status ("heading here for pickup" → "out for delivery with …") instead of a dead-end "advance" button, plus one-tap `tel:` call buttons for both the customer and the rider directly from the order card |
 | 📦💰 | **Optional packaging charge** — a flat per-order fee you control, shown as its own line item on every customer bill |
-| 📍 | **Flat 15km delivery range** — a platform-wide cap, the same for every restaurant; customers outside it never see you in their feed, and orders from out-of-range addresses are politely rejected at checkout |
+| 📍 | **30km reach, two delivery tiers** — a platform-wide radius, the same for every restaurant: 15km at the normal flat delivery fee, 15–30km still orderable at a distance-scaled premium fee; customers beyond 30km never see you in their feed, and orders from out-of-range addresses are politely rejected at checkout |
+| 🗑️☁️ | **Cloud storage cleans up after itself** — deleting a reel/photo, or replacing your profile picture, immediately deletes the *old* file from ImageKit too, instead of leaving orphaned storage behind forever |
 | 🍕 | **Full menu control** — add, edit (name, description, price, category, availability), or delete any item; upload a **photo or a video** for each reel |
 | 🎬 | **Reel length limit** — video uploads must be 5–30 seconds, checked the moment a file is selected |
 | 🎵 | **Instagram-style song trimming** — search a track, drag a waveform window to pick where it starts, tap the circular timer to set the clip length (5–30s, capped to the video's own length), then preview before attaching |
@@ -111,9 +115,9 @@ Everything — auth, media storage, email, real-time location, routing, geocodin
 | 🛰️ | **Real GPS tracking** — `navigator.geolocation.watchPosition`, throttled to the server every 15s (plus an immediate first fix), broadcast live over Socket.IO to the customer's tracking screen |
 | 🧭 | **Direction-aware marker** — the bike icon computes its bearing from the last GPS fix (`atan2`) and rotates to face the way the rider is actually moving, while the marker itself glides smoothly (`requestAnimationFrame` tween) instead of snapping between fixes |
 | 🔒 | **Proximity-gated, rider-confirmed actions** — "Delivered" only unlocks once the rider's live location is within ~200m of the drop point. For Cash on Delivery, the rider swipes "Cash Collected & Mark Delivered" — one action both completes the delivery and settles the payment; there's no separate customer-side confirmation step |
-| 🖼️ | **Profile picture, phone & vehicle number** — visible to the customer on their tracking screen, with a one-tap `tel:` call button |
+| 🖼️ | **Profile picture, phone & vehicle number** — visible to the customer on their tracking screen, with a one-tap `tel:` call button that stays reliable through the *entire* delivery flow (pickup, out-for-delivery, delivered), and works the other way too — restaurant and customer contact numbers open the native dialer at every step |
 | 💰 | **Today / Yesterday / Past earnings** — the same three-bucket stat-card pattern as the restaurant dashboard, driven by the actual distance-based delivery fee earned per completed delivery |
-| 🚫 | **Distance-slab delivery pricing built in** — ₹20 (0–3 km) / ₹30 (3–7 km) / ₹40 (7–15 km), capped by the platform-wide 15km limit; an address that's genuinely out of range is rejected *before* a rider ever sees it |
+| 🚫 | **Distance-based delivery pricing built in** — ₹20 (0–3 km) / ₹30 (3–7 km) / ₹40 (7–15 km) flat slabs, then a Zomato/Swiggy-style scaled premium fee of ₹50 + ₹12 per extra km from 15km out to the platform-wide 30km limit; an address genuinely beyond 30km is rejected *before* a rider ever sees it |
 | 💵 | **COD collection is a whole rupee** — cash orders round the grand total (the itemised GST/fees stay precise; a "round off" line reconciles the difference), so what the rider actually collects is a number that can be paid in physical cash |
 
 ### 🛠️ Under the hood
@@ -123,6 +127,8 @@ Everything — auth, media storage, email, real-time location, routing, geocodin
 - **HTTP-only JWT cookies** for auth, checked against MongoDB on every protected request; Socket.IO connections are authenticated by reading the same cookie off the handshake.
 - **Password *and* OTP are first-class** on register and login, for all three roles — bcrypt-hashed either way.
 - **Atomic, race-safe delivery claiming** — `acceptDelivery` is a single `findOneAndUpdate` guarded by `rider: null`, so two riders tapping "Accept" on the same order at the same instant can never both win it.
+- **Cart contents are re-validated server-side, never trusted** — the frontend cart already enforces one restaurant at a time, but `resolveCartItems()` in `order.controller.js` independently re-checks that every item in a submitted `items` array shares the same `foodPartner` before quoting or creating an order, rejecting a tampered/mixed-restaurant request with a 400 rather than silently mispricing it.
+- **iOS Safari-safe auth cookies** — `backend/src/utils/authCookie.js` is the single place that sets *and clears* the `token` cookie, with `SameSite=None; Secure` in production (required for the cookie to survive iOS Safari's cross-site cookie policy when the frontend and backend are on different domains) and matching attributes on logout — a `clearCookie` call with different attributes than the original `cookie()` call is silently ignored by strict browsers, which used to leave a stale session behind.
 - **GPS/Google-Maps-link only, not free-text geocoding** — restaurant locations, saved delivery addresses, and every order's pickup/drop point all come from the phone's own GPS or a pasted Google Maps link (`POST /api/geo/parse-maps-link` extracts `{lat, lng}` from the URL, following short-link redirects server-side), each confirmed on a draggable-pin map before it's saved. Geocoding a typed address by text turned out to be unreliable for small Indian localities (two real addresses in the same "Ganga Puram" locality once resolved ~17km apart), so order creation never geocodes anything — it always reads the already-stored, human-confirmed coordinates on both ends. The old Nominatim address→coordinates geocoder still exists in `map.service.js` purely as a fallback for the Home-feed "enter address manually" box. The saved *display* address (shown to the restaurant/rider, e.g. "Flat 402, Sunrise Apartments...") is a single freely-editable text field — pre-filled with Google's own address when a place link is pasted, but whatever the user submits is trusted and stored as-is, with a plain coordinate string as the only fallback if left empty; it's never geocoded and never affects distance/pricing.
 - **Server is the only source of truth for money** — every rupee of a bill (item total, restaurant GST, packaging charge, delivery fee, platform fee, GST on fees) is computed in `pricing.service.js` at order-creation time; the client only ever *previews* a bill via `/api/orders/quote`.
 - **`validateModifiedOnly` Mongoose pattern** on every partial update, so a legacy document missing a newer required field never blocks an unrelated edit.
@@ -300,7 +306,7 @@ erDiagram
         object song
     }
     ORDER {
-        number quantity
+        array items "food + quantity, one or more, always the same restaurant"
         string address
         string status "pending..delivered"
         string riderStatus "unassigned..delivered"
@@ -312,6 +318,8 @@ erDiagram
         object billBreakdown
         geopoint pickupLocation
         geopoint dropLocation
+        number foodPartnerRating "1-5, optional"
+        number riderRating "1-5, optional"
     }
     REVIEW {
         number rating
@@ -394,20 +402,36 @@ flowchart TD
     AddrField --> Confirmed
 ```
 
+### Cart — multiple dishes, one restaurant
+
+Tapping "Order now" on any dish adds it to the cart and lands on `/cart`, which doubles as both the running basket and the checkout screen:
+
+```mermaid
+flowchart TD
+    Tap(["Tap 'Order now' on a dish"]) --> Check{"Cart already has items<br/>from a different restaurant?"}
+    Check -->|"No — empty or same restaurant"| Add["Add to cart<br/>(merge quantity if already present)"]
+    Check -->|"Yes"| Warn["Warn: 'this will replace<br/>your current cart'"]
+    Warn -->|"Confirm"| Replace["Clear cart, start fresh<br/>with the new restaurant"] --> Add
+    Warn -->|"Cancel"| Stay["Stay on the current cart, unchanged"]
+    Add --> Cart["/cart — every item, its own<br/>quantity stepper, running bill preview"]
+    Cart --> Checkout["Address + payment sheets →<br/>POST /api/orders/quote, then POST /api/orders<br/>with items: [{food, quantity}, ...]"]
+```
+
 ### Delivery pricing — from confirmed pins to a rejected-or-accepted order
 
 ```mermaid
 flowchart TD
     Pickup["FoodPartner.location<br/>(confirmed at registration/profile-update)"] --> Route["OSRM route → distance in km"]
     Drop["Selected saved address's {lat, lng}<br/>(confirmed at save time)"] --> Route
-    Route --> Slab{"Distance vs.<br/>flat 15km cap"}
+    Route --> Slab{"Distance vs.<br/>15km / 30km bands"}
     Slab -->|"0–3km"| Fee20["₹20"]
     Slab -->|"3–7km"| Fee30["₹30"]
     Slab -->|"7–15km"| Fee40["₹40"]
-    Slab -->|"beyond 15km"| Reject["409 — outside delivery range"]
+    Slab -->|"15–30km (premium)"| FeePremium["₹50 + ₹12 × extra km<br/>beyond 15km, rounded up"]
+    Slab -->|"beyond 30km"| Reject["409 — outside delivery range"]
     Slab -->|"OSRM itself failed<br/>(not an address problem)"| Default["Use a standard<br/>delivery fee — never block the order"]
-    Fee20 & Fee30 & Fee40 & Default --> Bill["itemsTotal + restaurantGST<br/>+ packagingCharge + deliveryFee<br/>+ platformFee + serviceGST"]
-    Bill --> PlaceOrder["POST /api/orders<br/>(recomputed server-side, never trusts the client —<br/>and never geocodes anything)"]
+    Fee20 & Fee30 & Fee40 & FeePremium & Default --> Bill["itemsTotal + restaurantGST<br/>+ packagingCharge + deliveryFee<br/>+ platformFee + serviceGST"]
+    Bill --> PlaceOrder["POST /api/orders<br/>(items array resolved + re-validated as one restaurant,<br/>recomputed server-side, never trusts the client —<br/>and never geocodes anything)"]
 ```
 
 ### Dual auth: password or OTP (all three roles)
@@ -437,12 +461,12 @@ Every order's `total` is the sum of six independently-stored fields, computed se
 | **Item total** | `price × quantity` | The restaurant |
 | **Restaurant GST** | 5% of item total | Passed through to tax |
 | **Packaging charge** | Flat, set by the restaurant (default ₹0) | The restaurant |
-| **Delivery fee** | Distance slab: ₹20 (0–3km) / ₹30 (3–7km) / ₹40 (7–15km) | The rider (their entire earning per delivery) |
+| **Delivery fee** | Distance slab: ₹20 (0–3km) / ₹30 (3–7km) / ₹40 (7–15km); beyond 15km and up to the 30km limit, a premium fee of ₹50 + ₹12 per extra km (rounded up) | The rider (their entire earning per delivery) |
 | **Platform fee** | Flat ₹6 per order | ZomaFeeds |
 | **GST on fees** | 18% of (delivery fee + platform fee) | Passed through to tax |
 | **Round off** *(COD only)* | Grand total rounded to the nearest whole rupee — cash can't practically settle paise | Absorbed by the platform |
 
-A restaurant's dashboard revenue is its item-total share (not the customer's full bill); a rider's earnings dashboard sums exactly the delivery fee of every order they've completed. All three rate constants live in one place (`backend/src/config/pricingConfig.js`) so they can be tuned without touching the calculation logic.
+A restaurant's dashboard revenue is its item-total share (not the customer's full bill); a rider's earnings dashboard sums exactly the delivery fee of every order they've completed. Every rate — GST percentages, platform fee, the 15km/30km distance bands, and the premium fee's base + per-km charge — lives in one place (`backend/src/config/pricingConfig.js`) so they can all be tuned without touching the calculation logic in `pricing.service.js`.
 
 ---
 
@@ -457,30 +481,32 @@ ZomaFeeds/
 │       ├── socket.js             # Socket.IO server — JWT-cookie auth, order_<id> and riders_lobby rooms
 │       ├── db/db.js              # mongoose connection
 │       ├── config/
-│       │   └── pricingConfig.js  # GST rates, platform fee, fallback delivery fee — tune in one place
+│       │   └── pricingConfig.js  # GST rates, platform fee, 15km/30km distance bands, premium fee — tune in one place
 │       ├── controllers/          # auth, food, food-partner, order, rider, user, geo, review, comment, song, notification
 │       ├── models/                # mongoose schemas (user, foodpartner, rider, food, order, review, comment, ...)
 │       ├── routes/                # express routers, wired to controllers + middleware
 │       ├── middlewares/           # authUserMiddleware / authFoodPartnerMiddleware / authRiderMiddleware / authAnyMiddleware
-│       └── services/              # storage (ImageKit), mail (Brevo), otp, map (Maps-link parsing/route/legacy geocode), pricing
+│       ├── services/              # storage (ImageKit, incl. delete), mail (Brevo), otp, map (Maps-link parsing/route/legacy geocode), pricing
+│       └── utils/authCookie.js    # single place that sets/clears the auth cookie — keeps SameSite/Secure attributes in sync
 │
 └── frontend/
     └── src/
-        ├── App.jsx                # theme provider + route tree
+        ├── App.jsx                # theme provider + route tree + CookieConsent
         ├── routes/AppRoutes.jsx   # all routes for all three roles, Guard + InternalOnly wrappers
         ├── pages/
         │   ├── auth/               # LandingPage, User/FoodPartner/Rider Login & Register
-        │   ├── general/            # Home, Reels, Saved, OrderPage (checkout), PaymentPage (tracking), UserProfile
+        │   ├── general/            # Home, Reels, Saved, CartPage (multi-item checkout), OrderPage (add-to-cart), PaymentPage (tracking), UserProfile
         │   ├── food-partner/       # Dashboard, CreateFood, ManageFood, Profile
         │   └── rider/              # RiderDashboard, RiderProfile
         ├── components/
         │   ├── rider/              # NewOrderCard, RiderReachScreen, RiderOrderScreen, SwipeToConfirm
-        │   ├── ReelFeed, SongPicker, PageNav, BottomNav, RiderBottomNav, OrderConfirmModal
+        │   ├── ReelFeed (incl. pull-to-refresh), SongPicker, PageNav, BottomNav, RiderBottomNav, OrderConfirmModal
         │   ├── AddressFields (GPS/Maps-link capture), SavedAddresses, AddressPickerSheet, PaymentMethodSheet, LocationPrompt
+        │   ├── NoNearbyRestaurants, CookieConsent
         │   └── RiderTrackingMap, OrderRouteMap, PinConfirmMap, MapRecenter
         ├── hooks/
         │   └── useSmoothMarker.js  # bearing + requestAnimationFrame tween for the live rider marker
-        ├── config/                 # axios instance, socket client, cart/address/pricing/geo helpers, map icons
+        ├── config/                 # axios instance, socket client, cart (multi-item, one-restaurant), reelsRefresh event, address/pricing/geo helpers, map icons
         └── styles/                 # one CSS file per feature — no monolithic stylesheet
 ```
 
@@ -565,12 +591,14 @@ A few things learned the hard way while deploying to Render — worth knowing wh
 - **Free-tier services sleep.** Render (and similar free tiers) spin a service down after ~15 minutes of inactivity; the next request 502s while it cold-starts back up. Point a free uptime monitor (UptimeRobot, cron-job.org, …) at `GET /` for both the backend and the JioSaavn API instance, on a 5-minute interval, to keep them warm — this matters even more now that riders depend on a live socket connection.
 - **A restaurant needs a confirmed map pin before it can accept orders.** Registration and profile-update both require `{lat, lng}` from GPS or a pasted Google Maps link — there's no address-text fallback in this path, so a restaurant that skips the location step can't be ordered from until they set one.
 - **Prefer an HTTPS email API over raw SMTP.** Most free hosts block outbound SMTP ports outright, which silently breaks password-based senders like Nodemailer/Gmail in production — exactly why email goes through Brevo's HTTPS API here instead.
+- **`backend/package.json` needs an explicit `"start"` script** (`node server.js`) — if a host's Start Command defaults to `npm start` and the script doesn't exist, the deploy fails outright on boot even though the code itself is fine.
+- **Cross-domain auth cookies need `SameSite=None; Secure`, in both directions.** When the frontend and backend are on different domains (the normal case on Render), the auth cookie must be set with `SameSite=None; Secure` or iOS Safari (and other strict browsers) drop it. Just as important: the *logout* `clearCookie` call has to use the exact same attributes as the original `cookie()` call, or the browser treats it as a different cookie and won't actually clear the session — see `backend/src/utils/authCookie.js`.
 
 ---
 
 ## 📡 API reference
 
-All protected routes read a JWT from an `httpOnly` cookie set at login. `user`, `foodPartner`, and `rider` are three separate roles with separate cookies/guards.
+All protected routes read a JWT from an `httpOnly` cookie set at login (`SameSite=None; Secure` in production, so it survives cross-domain requests including from iOS Safari). `user`, `foodPartner`, and `rider` are three separate roles with separate cookies/guards.
 
 <details>
 <summary><strong>Auth — <code>/api/auth</code></strong></summary>
@@ -583,7 +611,7 @@ All protected routes read a JWT from an `httpOnly` cookie set at login. `user`, 
 | POST | `/user/login` | — | Log in a user (password or OTP) |
 | GET | `/user/logout` | user | Clear the session cookie |
 | GET | `/user/profile` | user | Get the logged-in user's profile |
-| PATCH | `/user/profile` | user | Update name / email / phone / picture |
+| PATCH | `/user/profile` | user | Update name / email / phone / picture — replacing the picture deletes the old one from ImageKit |
 | POST | `/food-partner/register` | — | Register a restaurant partner — requires a confirmed `{lat, lng}` (GPS or Maps link) |
 | POST | `/food-partner/login` | — | Log in a restaurant partner |
 | GET | `/food-partner/logout` | foodPartner | Clear the session cookie |
@@ -596,12 +624,12 @@ All protected routes read a JWT from an `httpOnly` cookie set at login. `user`, 
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | POST | `/` | foodPartner | Upload a new reel (video **or photo**, song optional) |
-| GET | `/` | user | List reels within your radius, enriched with liked/saved/rating |
+| GET | `/` | user | List reels within your 30km radius (15km normal, 15–30km premium delivery), enriched with liked/saved/rating; empty + `hasUserLocation: true` means nothing is within 30km |
 | POST | `/like` | user | Toggle like on a food item |
 | POST | `/save` | user | Toggle save on a food item |
 | GET | `/save` | user | List the user's saved reels |
 | PATCH | `/:id` | foodPartner | Edit name/description/price/category/availability/song |
-| DELETE | `/:id` | foodPartner | Delete an owned item |
+| DELETE | `/:id` | foodPartner | Delete an owned item — also deletes its media from ImageKit |
 
 </details>
 
@@ -610,9 +638,9 @@ All protected routes read a JWT from an `httpOnly` cookie set at login. `user`, 
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/` | user | List partners within a flat 15km of your location |
+| GET | `/` | user | List partners within 30km of your location (15km normal, 15–30km premium delivery) |
 | GET | `/me` | foodPartner | Own profile + menu + stats |
-| PATCH | `/me` | foodPartner | Update business profile (location from GPS/Maps-link if changed, packaging charge) |
+| PATCH | `/me` | foodPartner | Update business profile (location from GPS/Maps-link if changed, packaging charge, profile picture — replacing one deletes the old file from ImageKit) |
 | PATCH | `/me/hours` | foodPartner | Toggle open/closed and/or update hours |
 | POST | `/:id/notify-me` | user | Ask to be notified when a closed restaurant reopens |
 | GET | `/:id` | user | Public partner profile + menu |
@@ -624,10 +652,10 @@ All protected routes read a JWT from an `httpOnly` cookie set at login. `user`, 
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| POST | `/quote` | user | Preview the full bill (incl. delivery fee) for a food + a confirmed `{lat, lng}`, without creating an order — no geocoding, coordinates are required. Pass `paymentMethod: 'cod'` to preview the whole-rupee rounded total |
-| POST | `/` | user | Place an order — server computes and stores the full bill from the restaurant's stored location and the submitted `{lat, lng}` |
+| POST | `/quote` | user | Preview the full bill (incl. delivery fee) for `items: [{food, quantity}, ...]` (all must share one restaurant) + a confirmed `{lat, lng}`, without creating an order — no geocoding, coordinates are required. Pass `paymentMethod: 'cod'` to preview the whole-rupee rounded total |
+| POST | `/` | user | Place an order — `items` is re-validated server-side to belong to a single restaurant regardless of what the client sends; the server computes and stores the full bill from the restaurant's stored location and the submitted `{lat, lng}` |
 | GET | `/my` | user | The user's order history |
-| GET | `/partner/incoming?days=` | foodPartner | Orders bucketed into Today/Yesterday/Past + stats, including rider info once assigned |
+| GET | `/partner/incoming?days=` | foodPartner | Orders bucketed into Today/Yesterday/Past + stats, including customer and rider phone numbers (once assigned) for the dashboard's call buttons |
 | GET | `/rider/available` | rider | Unclaimed orders ready for pickup |
 | GET | `/rider/active` | rider | The rider's current in-progress delivery |
 | GET | `/:id` | user | A single order |
@@ -637,8 +665,8 @@ All protected routes read a JWT from an `httpOnly` cookie set at login. `user`, 
 | PATCH | `/:id/respond` | foodPartner | Accept or reject a pending order |
 | PATCH | `/:id/advance` | foodPartner | Advance status one step (blocked once a rider has claimed the order) |
 | PATCH | `/:id/accept-delivery` | rider | Atomically claim an unassigned order |
-| PATCH | `/:id/pickup` | rider | Mark picked up from the restaurant |
-| PATCH | `/:id/start-delivery` | rider | Mark out for delivery |
+| PATCH | `/:id/pickup` | rider | Mark picked up from the restaurant — response and the live socket update both carry full rider + customer contact info |
+| PATCH | `/:id/start-delivery` | rider | Mark out for delivery — same fully-populated contact info as above |
 | PATCH | `/:id/deliver` | rider | Mark delivered (requires proximity to the drop point) — for COD, this same action also settles the payment; there's no separate customer-side confirmation step |
 
 </details>
@@ -652,7 +680,7 @@ All protected routes read a JWT from an `httpOnly` cookie set at login. `user`, 
 | POST | `/login` | — | Log in a rider |
 | GET | `/logout` | rider | Clear the session cookie |
 | GET | `/me` | rider | Own profile + Today/Yesterday/Past earnings |
-| PATCH | `/me` | rider | Update name/phone/vehicle number/picture |
+| PATCH | `/me` | rider | Update name/phone/vehicle number/picture — replacing the picture deletes the old one from ImageKit |
 | PATCH | `/status` | rider | Go online/offline |
 | PATCH | `/location` | rider | Push a GPS fix (also broadcast live over Socket.IO to the active order's room) |
 
