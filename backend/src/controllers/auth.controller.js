@@ -8,16 +8,17 @@ const mailService = require('../services/mail.service');
 const otpService = require('../services/otp.service');
 const { v4: uuid } = require('uuid');
 const { setAuthCookie, clearAuthCookie } = require('../utils/authCookie');
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+const { isValidEmail, isAcceptableRegistrationEmail } = require('../utils/emailValidation');
 
 async function requestOtp(req, res) {
     try {
         const { email, role, purpose } = req.body;
 
-        if (!EMAIL_REGEX.test(email || '')) return res.status(400).json({ message: 'Please enter a valid email address' });
         if (!['user', 'foodPartner', 'rider'].includes(role)) return res.status(400).json({ message: 'Invalid role' });
         if (!['register', 'login'].includes(purpose)) return res.status(400).json({ message: 'Invalid purpose' });
+
+        const isEmailAcceptable = purpose === 'register' ? isAcceptableRegistrationEmail(email) : isValidEmail(email);
+        if (!isEmailAcceptable) return res.status(400).json({ message: 'Please enter a valid email address' });
 
         const Model = role === 'user' ? userModel : role === 'foodPartner' ? foodPartnerModel : riderModel;
         const existingAccount = await Model.findOne({ email });
@@ -43,7 +44,7 @@ async function registerUser(req, res) {
     try {
         const { fullName, email, password, otp } = req.body;
 
-        if (!EMAIL_REGEX.test(email || '')) return res.status(400).json({ message: 'Please enter a valid email address' });
+        if (!isAcceptableRegistrationEmail(email)) return res.status(400).json({ message: 'Please enter a valid email address' });
         if (!password && !otp) return res.status(400).json({ message: 'Provide a password or an OTP to register' });
 
         const isUserAlreadyExists = await userModel.findOne({
@@ -143,7 +144,7 @@ async function registerFoodPartner(req, res) {
     try {
         const { name, email, password, otp, phone, address: addressText, contactName, restaurantType, lat, lng } = req.body;
 
-        if (!EMAIL_REGEX.test(email || '')) return res.status(400).json({ message: 'Please enter a valid email address' });
+        if (!isAcceptableRegistrationEmail(email)) return res.status(400).json({ message: 'Please enter a valid email address' });
         if (!password && !otp) return res.status(400).json({ message: 'Provide a password or an OTP to register' });
         if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) return res.status(400).json({ message: 'A location is required — use GPS or paste a Google Maps link' });
 
@@ -291,7 +292,7 @@ async function updateUserProfile(req, res) {
     const user = await userModel.findById(req.user._id);
 
     if (email && email !== user.email) {
-        if (!EMAIL_REGEX.test(email)) return res.status(400).json({ message: 'Please enter a valid email address' });
+        if (!isAcceptableRegistrationEmail(email)) return res.status(400).json({ message: 'Please enter a valid email address' });
         const emailTaken = await userModel.findOne({ email, _id: { $ne: user._id } });
         if (emailTaken) return res.status(400).json({ message: 'Email already in use' });
         user.email = email;

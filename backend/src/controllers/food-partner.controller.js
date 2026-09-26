@@ -8,8 +8,7 @@ const notificationModel = require('../models/notification.model');
 const storageService = require('../services/storage.service');
 const mapService = require('../services/map.service');
 const { v4: uuid } = require('uuid');
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+const { isAcceptableRegistrationEmail } = require('../utils/emailValidation');
 
 async function getPartnerStats(foodPartnerId) {
     const foodItems = await foodModel.find({ foodPartner: foodPartnerId }).select('_id');
@@ -153,7 +152,7 @@ async function updateProfile(req, res) {
         if (!partner) return res.status(404).json({ message: 'Food partner account not found' });
 
         if (email && email !== partner.email) {
-            if (!EMAIL_REGEX.test(email)) return res.status(400).json({ message: 'Please enter a valid email address' });
+            if (!isAcceptableRegistrationEmail(email)) return res.status(400).json({ message: 'Please enter a valid email address' });
             const emailTaken = await foodPartnerModel.findOne({ email, _id: { $ne: partner._id } });
             if (emailTaken) return res.status(400).json({ message: 'Email already in use' });
             partner.email = email;

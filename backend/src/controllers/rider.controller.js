@@ -6,14 +6,13 @@ const storageService = require('../services/storage.service');
 const { v4: uuid } = require('uuid');
 const { getIO, setRiderOnline } = require('../socket');
 const { setAuthCookie, clearAuthCookie } = require('../utils/authCookie');
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+const { isAcceptableRegistrationEmail } = require('../utils/emailValidation');
 
 async function registerRider(req, res) {
     try {
         const { name, email, password, otp, phone, vehicleNumber } = req.body;
 
-        if (!EMAIL_REGEX.test(email || '')) return res.status(400).json({ message: 'Please enter a valid email address' });
+        if (!isAcceptableRegistrationEmail(email)) return res.status(400).json({ message: 'Please enter a valid email address' });
         if (!password && !otp) return res.status(400).json({ message: 'Provide a password or an OTP to register' });
         if (!phone?.trim() || !vehicleNumber?.trim()) return res.status(400).json({ message: 'Phone and vehicle number are required' });
 
@@ -129,7 +128,7 @@ async function updateProfile(req, res) {
         if (!rider) return res.status(404).json({ message: 'Rider account not found' });
 
         if (email && email !== rider.email) {
-            if (!EMAIL_REGEX.test(email)) return res.status(400).json({ message: 'Please enter a valid email address' });
+            if (!isAcceptableRegistrationEmail(email)) return res.status(400).json({ message: 'Please enter a valid email address' });
             const emailTaken = await riderModel.findOne({ email, _id: { $ne: rider._id } });
             if (emailTaken) return res.status(400).json({ message: 'Email already in use' });
             rider.email = email;
